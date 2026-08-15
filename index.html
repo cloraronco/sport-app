@@ -87,6 +87,8 @@
   .hist-status{font-size:12px; letter-spacing:.5px; padding:3px 8px; border-radius:6px;}
   .hist-status.ok{background:var(--rest-dim); color:var(--rest);}
   .hist-status.ko{background:var(--effort-dim); color:var(--effort);}
+  .hist-delete{background:none; border:1px solid var(--line); color:var(--muted);
+    width:22px; height:22px; border-radius:6px; font-size:12px; line-height:1; padding:0;}
   .hist-detail{font-family:var(--font-mono); color:var(--muted); font-size:12px; line-height:1.5;}
   .hist-total{color:var(--text); font-size:13px;}
 
@@ -314,6 +316,12 @@ async function loadSessionHistory(){
 async function saveSessionHistory(){
   await waitForStorage();
   try{ await storage.set('sessionHistory', JSON.stringify(sessionHistory.slice(0, 200)), false); }catch(e){}
+}
+function deleteHistoryEntry(idx){
+  if(!confirm('Supprimer cette séance de l\'historique ?')) return;
+  sessionHistory.splice(idx, 1);
+  saveSessionHistory();
+  render();
 }
 function sessionVolumeSummary(){
   return currentProgram().exercises.map(ex => {
@@ -1464,7 +1472,7 @@ function renderHistory(){
       </div>`;
   }
   const chart = renderProgressChart();
-  const entries = sessionHistory.map(e => {
+  const entries = sessionHistory.map((e, idx) => {
     const d = new Date(e.date);
     const dateTxt = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' · ' +
       d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -1474,7 +1482,10 @@ function renderHistory(){
       <div class="hist-entry ${e.validated ? '' : 'failed'}">
         <div class="hist-row1">
           <span class="hist-prog">${e.label}</span>
-          <span class="hist-status ${e.validated ? 'ok' : 'ko'}">${e.validated ? 'Validée' : 'Incomplète'}</span>
+          <span style="display:flex; align-items:center; gap:8px;">
+            <span class="hist-status ${e.validated ? 'ok' : 'ko'}">${e.validated ? 'Validée' : 'Incomplète'}</span>
+            <button class="hist-delete" data-idx="${idx}">✕</button>
+          </span>
         </div>
         <span class="hist-date">${dateTxt}</span>
         <span class="hist-detail">${detailLines}</span>
@@ -1557,6 +1568,9 @@ function attachHandlers(){
 
   const histBackBtn = document.getElementById('histBackBtn');
   if(histBackBtn) histBackBtn.onclick = () => { state.screen = 'home'; render(); };
+  document.querySelectorAll('.hist-delete').forEach(btn => {
+    btn.onclick = (e) => { e.stopPropagation(); deleteHistoryEntry(parseInt(btn.dataset.idx, 10)); };
+  });
 
   const exportBtn = document.getElementById('exportBtn');
   if(exportBtn) exportBtn.onclick = exportToClipboard;
