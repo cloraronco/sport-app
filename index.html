@@ -332,6 +332,7 @@ function logSession(validated){
     program: state.programKey,
     label: currentProgram().label,
     validated,
+    actualVolume: state.actualTotal || 0,
     exercises: sessionVolumeSummary()
   };
   sessionHistory.unshift(entry);
@@ -543,10 +544,9 @@ function computeStreak(){
 function lifetimeStats(key){
   let total = 0, count = 0;
   sessionHistory.forEach(e => {
-    if(e.program === key && e.validated){
-      count++;
-      total += e.exercises.reduce((a,ex) => a + ex.volume, 0);
-    }
+    if(e.program !== key) return;
+    total += (e.actualVolume != null) ? e.actualVolume : e.exercises.reduce((a,ex) => a + ex.volume, 0);
+    if(e.validated) count++;
   });
   return { total, count };
 }
@@ -853,6 +853,7 @@ function startSession(key){
   state.exIdx = 0; state.setIdx = 0;
   state.sessionFailed = false;
   state.manualResults = [];
+  state.actualTotal = 0;
   beginSet();
 }
 
@@ -878,6 +879,7 @@ function beginSet(){
     state.timer = setInterval(()=>{
       if(state.paused) return;
       state.count -= 1;
+      state.actualTotal = (state.actualTotal||0) + 1;
       if(state.count <= 0){
         clearInterval(state.timer);
         sndSetEnd();
@@ -897,6 +899,7 @@ function adjustManualCount(delta){
 }
 function validateManualSet(){
   state.manualResults[state.setIdx] = state.manualCount;
+  state.actualTotal = (state.actualTotal||0) + state.manualCount;
   sndSetEnd();
   advanceAfterSet();
 }
@@ -923,6 +926,7 @@ function runPhase2(){
   render();
   startPhase(ex.phase2.dur * 1000, () => {
     state.count += 1;
+    state.actualTotal = (state.actualTotal||0) + 1;
     sndRep(); // toujours le même son de validation
     if(state.count >= targetFor(ex, state.setIdx)){
       sndSetEnd();
@@ -1464,7 +1468,7 @@ function renderHistory(){
     const d = new Date(e.date);
     const dateTxt = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' · ' +
       d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const totalVol = e.exercises.reduce((a,ex) => a + ex.volume, 0);
+    const totalVol = (e.actualVolume != null) ? e.actualVolume : e.exercises.reduce((a,ex) => a + ex.volume, 0);
     const detailLines = e.exercises.map(ex => `${ex.name}: ${ex.detail}`).join(' · ');
     return `
       <div class="hist-entry ${e.validated ? '' : 'failed'}">
