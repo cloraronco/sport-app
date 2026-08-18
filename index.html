@@ -323,6 +323,29 @@
     background:none; color:#ff6b6b; font-weight:700; font-size:14px;}
   .danger-btn-solid{display:block; width:100%; margin-top:12px; padding:13px; border:none; border-radius:12px;
     background:#ff6b6b; color:#1a1a1a; font-weight:700; font-size:14px;}
+
+  /* ---------- CRÉATION D'ENTRAÎNEMENT ---------- */
+  .builder-card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:16px;}
+  .builder-section-title{font-family:var(--font-display), sans-serif; font-size:14px; letter-spacing:1px;
+    text-transform:uppercase; color:var(--muted); margin:0 0 12px;}
+  .stepper-row{display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--line); gap:12px;}
+  .stepper-row:last-child{border-bottom:none;}
+  .stepper-label{font-size:13.5px; color:var(--text); font-weight:600;}
+  .stepper-ctrl{display:flex; align-items:center; gap:10px; flex-shrink:0;}
+  .stepper-btn{width:34px; height:34px; border-radius:9px; background:var(--surface-2); border:1px solid var(--line);
+    color:var(--text); font-size:17px; line-height:1; flex-shrink:0;}
+  .stepper-val{font-family:var(--font-mono); min-width:50px; text-align:center; font-size:15px; font-weight:700;}
+  .exercise-summary-card{background:var(--surface-2); border:1px solid var(--line); border-radius:14px; padding:13px 14px;
+    margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .exercise-summary-name{font-weight:700; font-size:14px;}
+  .exercise-summary-detail{font-size:12px; color:var(--muted); margin-top:4px; line-height:1.5;}
+  .exercise-remove-btn{background:none; border:none; color:var(--muted); font-size:18px; padding:0 2px; flex-shrink:0;}
+  .add-exercise-btn{width:100%; background:var(--surface-2); border:1px dashed var(--line); color:var(--effort);
+    border-radius:14px; padding:14px; font-weight:700; font-size:13.5px; letter-spacing:.3px;}
+  .custom-workout-card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px;
+    margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .custom-workout-name{font-weight:700; font-size:14px;}
+  .custom-workout-sub{font-size:11.5px; color:var(--muted); margin-top:3px;}
 </style>
 </head>
 <body>
@@ -1184,7 +1207,7 @@ async function checkForResume(){
     const res = await storage.get('sessionCheckpoint', false);
     if(res && res.value){
       const cp = JSON.parse(res.value);
-      const prog = cp.programKey && PROGRAMS[cp.programKey];
+      const prog = cp.programKey && getProgram(cp.programKey);
       const validIdx = prog && cp.exIdx < prog.exercises.length && cp.setIdx < setsCount(prog.exercises[cp.exIdx]);
       const recent = cp.savedAt && (Date.now() - cp.savedAt) < 6 * 60 * 60 * 1000; // valable 6h
       if(prog && validIdx && recent){
@@ -1225,6 +1248,24 @@ async function loadSessionHistory(){
 async function saveSessionHistory(){
   await waitForStorage();
   try{ await storage.set('sessionHistory', JSON.stringify(sessionHistory.slice(0, 200)), false); }catch(e){}
+}
+
+/* ---------------- ENTRAÎNEMENTS PERSONNALISÉS ---------------- */
+let customPrograms = {}; // clé -> { label, custom:true, exercises:[...] }, même schéma que PROGRAMS
+async function loadCustomPrograms(){
+  await waitForStorage();
+  try{
+    const res = await storage.get('customPrograms', false);
+    if(res && res.value) customPrograms = JSON.parse(res.value);
+  }catch(e){ /* pas encore d'entraînement créé */ }
+}
+async function saveCustomPrograms(){
+  await waitForStorage();
+  try{ await storage.set('customPrograms', JSON.stringify(customPrograms), false); }catch(e){}
+}
+function getProgram(key){ return PROGRAMS[key] || customPrograms[key]; }
+function escapeHtml(str){
+  return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function sessionVolumeSummary(){
   return currentProgram().exercises.map(ex => {
@@ -1428,11 +1469,13 @@ function render(){
   else if(state.screen === 'profil') app.innerHTML = renderProfil();
   else if(state.screen === 'bilan') app.innerHTML = renderBilan();
   else if(state.screen === 'parametres') app.innerHTML = renderParametres();
+  else if(state.screen === 'workoutBuilder') app.innerHTML = renderWorkoutBuilder();
   attachHandlers();
   if(state.screen === 'communaute') attachCommunauteHandlers();
   else if(state.screen === 'profil') loadProfilScreen();
   else if(state.screen === 'bilan') attachBilanHandlers();
   else if(state.screen === 'parametres') attachParametresHandlers();
+  else if(state.screen === 'workoutBuilder') attachWorkoutBuilderHandlers();
   renderChrome();
   const activeScreens = ['session', 'freetest'];
   if(!activeScreens.includes(state.screen)) releaseWakeLock();
@@ -1582,7 +1625,7 @@ function checkForNewBadges(){
 }
 
 function estimateDuration(key){
-  const p = PROGRAMS[key];
+  const p = getProgram(key);
   if(key === 'tractions'){
     // Pas de rythme imposé donc le temps d'effort n'est pas connu à l'avance : on donne une fourchette.
     const ex = p.exercises[0];
@@ -1632,7 +1675,7 @@ function renderThermalPyramid(pyramid){
 }
 
 function programBreakdown(key){
-  const p = PROGRAMS[key];
+  const p = getProgram(key);
   let grandTotal = 0;
   let hasManual = false;
   const rows = p.exercises.map(e => {
@@ -1683,7 +1726,7 @@ function programBreakdown(key){
 
 function renderResumePrompt(){
   const cp = state.resumeCheckpoint;
-  const prog = PROGRAMS[cp.programKey];
+  const prog = getProgram(cp.programKey);
   const ex = prog.exercises[cp.exIdx];
   const total = setsCount(ex);
   return `
@@ -1702,7 +1745,7 @@ function emberBarFor(key){
       : 'linear-gradient(90deg, var(--steel), transparent)';
 }
 function renderHome(){
-  const cards = Object.keys(PROGRAMS).map(key => {
+  const builtInCards = Object.keys(PROGRAMS).map(key => {
     const p = PROGRAMS[key];
     const stats = lifetimeStats(key);
     const subtitle = key === 'pompes'
@@ -1714,6 +1757,17 @@ function renderHome(){
         <span class="prog-sub">${subtitle}</span>
       </div>`;
   }).join('');
+  const customCards = Object.keys(customPrograms).map(key => {
+    const p = customPrograms[key];
+    const stats = lifetimeStats(key);
+    const subtitle = `${stats.count} séance${stats.count>1?'s':''} validée${stats.count>1?'s':''} · ${p.exercises.length} exercice${p.exercises.length>1?'s':''}`;
+    return `
+      <div class="prog-card-simple" data-key="${key}" style="--ember-bar:linear-gradient(90deg, var(--effort), transparent);">
+        <h2>${escapeHtml(p.label)}</h2>
+        <span class="prog-sub">${subtitle}</span>
+      </div>`;
+  }).join('');
+  const cards = builtInCards + customCards;
 
   const streak = computeStreak();
   const streakHtml = streak > 0 ? `<div class="streak-badge">🔥 ${streak} jour${streak>1?'s':''} de suite</div>` : '';
@@ -1737,11 +1791,14 @@ function renderHome(){
 
 function renderProgramDetail(){
   const key = state.programKey;
-  const p = PROGRAMS[key];
+  const p = getProgram(key);
+  const isCustom = !PROGRAMS[key];
   const { rows, totalRow, levelRow } = programBreakdown(key);
   const record = key === 'pompes' ? pompesPersonalRecord() : key === 'tractions' ? tractionsPersonalRecord() : 0;
   const maxTestBtn = (key === 'pompes' || key === 'tractions') ? `
       <button class="maxtest-btn" id="maxTestBtn">🎯 Tester mon max${record ? ' (record : '+record+')' : ''}</button>` : '';
+  const deleteBtn = isCustom ? `
+      <button class="maxtest-btn" id="deleteCustomBtn" style="border-color:#ff6b6b; color:#ff6b6b; margin-top:8px;">🗑 Supprimer cet entraînement</button>` : '';
   const lifetime = lifetimeStats(key).total;
   return `
     <div class="home">
@@ -1751,7 +1808,7 @@ function renderProgramDetail(){
       <div class="lifetime-badge">💪 ${lifetime} réalisés depuis le début</div>
       <div class="prog-card" style="--ember-bar:${emberBarFor(key)};">
         <div class="prog-head">
-          <h2>${p.label}${key==='pompes' ? ` <span style="color:var(--effort); font-family:var(--font-mono); font-size:16px;">· Niveau ${pompesLevelNumber()}</span>` : ''}</h2>
+          <h2>${escapeHtml(p.label)}${key==='pompes' ? ` <span style="color:var(--effort); font-family:var(--font-mono); font-size:16px;">· Niveau ${pompesLevelNumber()}</span>` : ''}</h2>
           <span class="prog-count">${durationLabel(key)}</span>
         </div>
         ${rows}
@@ -1760,11 +1817,12 @@ function renderProgramDetail(){
       </div>
       <button class="start-btn" id="startBtn">Démarrer</button>
       ${maxTestBtn}
+      ${deleteBtn}
     </div>`;
 }
 
 /* ---------------- SESSION HELPERS ---------------- */
-function currentProgram(){ return PROGRAMS[state.programKey]; }
+function currentProgram(){ return getProgram(state.programKey); }
 function currentExercise(){ return currentProgram().exercises[state.exIdx]; }
 function setsCount(ex){ return ex.pyramid ? ex.pyramid.length : ex.sets; }
 function targetFor(ex, setIdx){ return ex.pyramid ? ex.pyramid[setIdx] : ex.target; }
@@ -2375,7 +2433,226 @@ async function exportToClipboard(){
   }
 }
 
+/* ---------------- CRÉATION D'ENTRAÎNEMENT PERSONNALISÉ ---------------- */
+function newExerciseDraft(){
+  return { name: '', sets: 3, rest: 60, mode: 'auto', target: 10, descente: 1.5, montee: 1 };
+}
+let workoutDraft = null;   // { editingKey: null|string, label: '', exercises: [] }
+let exerciseDraft = null;  // formulaire d'exercice en cours d'ajout, null = fermé
+
+function openWorkoutBuilder(existingKey){
+  if(existingKey && customPrograms[existingKey]){
+    const src = customPrograms[existingKey];
+    workoutDraft = { editingKey: existingKey, label: src.label, exercises: JSON.parse(JSON.stringify(src.exercises)) };
+  } else {
+    workoutDraft = { editingKey: null, label: '', exercises: [] };
+  }
+  exerciseDraft = null;
+  state.screen = 'workoutBuilder';
+  render();
+}
+function closeWorkoutBuilder(){
+  workoutDraft = null;
+  exerciseDraft = null;
+  state.screen = 'history';
+  render();
+}
+function exerciseSummaryLine(ex){
+  const repos = `repos ${ex.rest}s`;
+  if(ex.mode === 'manual') return `${ex.sets} séries · à ton rythme, tu notes le nombre à la fin · ${repos}`;
+  return `${ex.sets}×${ex.target} · descente ${ex.descente}s → montée ${ex.montee}s · ${repos}`;
+}
+function renderWorkoutBuilder(){
+  const wd = workoutDraft;
+  const exList = wd.exercises.map((ex, i) => `
+    <div class="exercise-summary-card">
+      <div>
+        <div class="exercise-summary-name">${escapeHtml(ex.name)}</div>
+        <div class="exercise-summary-detail">${exerciseSummaryLine(ex)}</div>
+      </div>
+      <button type="button" class="exercise-remove-btn" data-remove-ex="${i}" aria-label="Retirer l'exercice">✕</button>
+    </div>`).join('');
+
+  const exFormHtml = exerciseDraft ? `
+    <div class="builder-card">
+      <div class="builder-section-title">Nouvel exercice</div>
+      <input type="text" id="exNameInput" class="text-input" placeholder="Nom de l'exercice (ex. Squats)" maxlength="40" value="${escapeHtml(exerciseDraft.name)}" style="margin-bottom:12px;">
+
+      <div class="stepper-row">
+        <span class="stepper-label">Nombre de séries</span>
+        <div class="stepper-ctrl">
+          <button type="button" class="stepper-btn" data-field="sets" data-delta="-1">−</button>
+          <span class="stepper-val">${exerciseDraft.sets}</span>
+          <button type="button" class="stepper-btn" data-field="sets" data-delta="1">+</button>
+        </div>
+      </div>
+      <div class="stepper-row">
+        <span class="stepper-label">Repos entre les séries</span>
+        <div class="stepper-ctrl">
+          <button type="button" class="stepper-btn" data-field="rest" data-delta="-15">−</button>
+          <span class="stepper-val">${exerciseDraft.rest}s</span>
+          <button type="button" class="stepper-btn" data-field="rest" data-delta="15">+</button>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <div class="settings-label" style="margin-bottom:8px;">Les répétitions...</div>
+        <div class="tag-picker" id="exModePicker">
+          <button type="button" data-value="auto" class="${exerciseDraft.mode==='auto'?'selected':''}">⏱️ avancent automatiquement</button>
+          <button type="button" data-value="manual" class="${exerciseDraft.mode==='manual'?'selected':''}">✍️ je les note moi-même</button>
+        </div>
+      </div>
+
+      ${exerciseDraft.mode === 'auto' ? `
+      <div class="stepper-row" style="margin-top:8px;">
+        <span class="stepper-label">Répétitions par série</span>
+        <div class="stepper-ctrl">
+          <button type="button" class="stepper-btn" data-field="target" data-delta="-1">−</button>
+          <span class="stepper-val">${exerciseDraft.target}</span>
+          <button type="button" class="stepper-btn" data-field="target" data-delta="1">+</button>
+        </div>
+      </div>
+      <div class="stepper-row">
+        <span class="stepper-label">Temps de descente</span>
+        <div class="stepper-ctrl">
+          <button type="button" class="stepper-btn" data-field="descente" data-delta="-0.1">−</button>
+          <span class="stepper-val">${exerciseDraft.descente.toFixed(1)}s</span>
+          <button type="button" class="stepper-btn" data-field="descente" data-delta="0.1">+</button>
+        </div>
+      </div>
+      <div class="stepper-row">
+        <span class="stepper-label">Temps de montée</span>
+        <div class="stepper-ctrl">
+          <button type="button" class="stepper-btn" data-field="montee" data-delta="-0.1">−</button>
+          <span class="stepper-val">${exerciseDraft.montee.toFixed(1)}s</span>
+          <button type="button" class="stepper-btn" data-field="montee" data-delta="0.1">+</button>
+        </div>
+      </div>` : `
+      <p class="hint" style="margin-top:10px;">Tu feras la série à ton rythme, sans chrono de répétitions, puis tu indiqueras le nombre réalisé juste après.</p>`}
+
+      <button type="button" class="primary-btn" id="confirmAddExerciseBtn" style="margin-top:14px;">Ajouter cet exercice</button>
+      <button type="button" class="link-btn" id="cancelAddExerciseBtn">Annuler</button>
+    </div>` : `
+    <button type="button" class="add-exercise-btn" id="openAddExerciseBtn">+ Ajouter un exercice</button>`;
+
+  return `
+    <div class="screen-pad">
+      <button type="button" class="back-link" id="builderBackBtn">← Retour</button>
+      <h2>${wd.editingKey ? "Modifier l'entraînement" : "Nouvel entraînement"}</h2>
+      <input type="text" id="workoutLabelInput" class="text-input" placeholder="Nom de la séance (ex. Full body)" maxlength="40" value="${escapeHtml(wd.label)}" style="margin-bottom:18px;">
+      <div class="builder-section-title">Exercices${wd.exercises.length ? ` (${wd.exercises.length})` : ''}</div>
+      ${exList}
+      ${exFormHtml}
+      <button type="button" class="share-bilan-btn" id="saveWorkoutBtn" style="margin-top:22px;">Enregistrer l'entraînement</button>
+    </div>`;
+}
+function attachWorkoutBuilderHandlers(){
+  const labelInput = document.getElementById('workoutLabelInput');
+  if(labelInput) labelInput.oninput = () => { workoutDraft.label = labelInput.value; };
+
+  const backBtn = document.getElementById('builderBackBtn');
+  if(backBtn) backBtn.onclick = closeWorkoutBuilder;
+
+  const openBtn = document.getElementById('openAddExerciseBtn');
+  if(openBtn) openBtn.onclick = () => { exerciseDraft = newExerciseDraft(); render(); };
+
+  const cancelBtn = document.getElementById('cancelAddExerciseBtn');
+  if(cancelBtn) cancelBtn.onclick = () => { exerciseDraft = null; render(); };
+
+  const nameInput = document.getElementById('exNameInput');
+  if(nameInput) nameInput.oninput = () => { exerciseDraft.name = nameInput.value; };
+
+  document.querySelectorAll('.stepper-btn').forEach(btn => {
+    btn.onclick = () => {
+      const field = btn.dataset.field;
+      const delta = parseFloat(btn.dataset.delta);
+      const bounds = {
+        sets: [1, 12], rest: [0, 300], target: [1, 100], descente: [0.3, 5], montee: [0.3, 5]
+      }[field];
+      let val = exerciseDraft[field] + delta;
+      val = Math.min(bounds[1], Math.max(bounds[0], val));
+      exerciseDraft[field] = (field === 'descente' || field === 'montee') ? Math.round(val * 10) / 10 : Math.round(val);
+      render();
+    };
+  });
+
+  document.querySelectorAll('#exModePicker button').forEach(btn => {
+    btn.onclick = () => { exerciseDraft.mode = btn.dataset.value; render(); };
+  });
+
+  const confirmAddBtn = document.getElementById('confirmAddExerciseBtn');
+  if(confirmAddBtn) confirmAddBtn.onclick = () => {
+    const name = (document.getElementById('exNameInput').value || '').trim();
+    if(!name){ alert('Donne un nom à l\'exercice.'); return; }
+    exerciseDraft.name = name;
+    workoutDraft.exercises.push(exerciseDraft);
+    exerciseDraft = null;
+    render();
+  };
+
+  document.querySelectorAll('[data-remove-ex]').forEach(btn => {
+    btn.onclick = () => {
+      workoutDraft.exercises.splice(parseInt(btn.dataset.removeEx, 10), 1);
+      render();
+    };
+  });
+
+  const saveBtn = document.getElementById('saveWorkoutBtn');
+  if(saveBtn) saveBtn.onclick = async () => {
+    const label = (document.getElementById('workoutLabelInput').value || '').trim();
+    if(!label){ alert('Donne un nom à ta séance.'); return; }
+    if(!workoutDraft.exercises.length){ alert('Ajoute au moins un exercice.'); return; }
+    const key = workoutDraft.editingKey || ('custom_' + Date.now());
+    customPrograms[key] = {
+      label,
+      custom: true,
+      exercises: workoutDraft.exercises.map(ex => {
+        if(ex.mode === 'manual') return { name: ex.name, type: 'manual', sets: ex.sets, rest: ex.rest };
+        return {
+          name: ex.name, type: 'reps', target: ex.target, sets: ex.sets, rest: ex.rest,
+          phase1: { label: 'Descente', dur: ex.descente }, phase2: { label: 'Montée', dur: ex.montee }
+        };
+      })
+    };
+    await saveCustomPrograms();
+    workoutDraft = null; exerciseDraft = null;
+    state.screen = 'history';
+    render();
+  };
+}
+async function deleteCustomWorkout(key){
+  if(!confirm('Supprimer définitivement cet entraînement ?')) return;
+  delete customPrograms[key];
+  await saveCustomPrograms();
+  state.screen = 'history';
+  render();
+}
+
+
+function renderMyWorkoutsSection(){
+  const keys = Object.keys(customPrograms);
+  const cards = keys.map(key => {
+    const p = customPrograms[key];
+    return `
+      <div class="custom-workout-card">
+        <div style="flex:1; min-width:0; cursor:pointer;" data-open-custom="${key}">
+          <div class="custom-workout-name">${escapeHtml(p.label)}</div>
+          <div class="custom-workout-sub">${p.exercises.length} exercice${p.exercises.length>1?'s':''}</div>
+        </div>
+        <button type="button" class="hist-link" data-edit-custom="${key}">✏️</button>
+      </div>`;
+  }).join('');
+  return `
+    <div style="margin-bottom:20px;">
+      <div class="hist-row1" style="margin-bottom:10px;">
+        <span class="hist-prog">Mes séances</span>
+      </div>
+      ${cards}
+      <button type="button" class="add-exercise-btn" id="openWorkoutBuilderBtn">+ Ajouter un entraînement</button>
+    </div>`;
+}
 function renderHistory(){
+  const myWorkouts = renderMyWorkoutsSection();
   if(sessionHistory.length === 0){
     return `
       <div class="history">
@@ -2384,6 +2661,7 @@ function renderHistory(){
           <h1>Historique</h1>
           <button class="hist-link" id="exportBtn">📤 Exporter</button>
         </div>
+        ${myWorkouts}
         <div class="hist-empty">Aucune séance enregistrée pour l'instant.</div>
       </div>`;
   }
@@ -2412,6 +2690,7 @@ function renderHistory(){
         <h1>Historique</h1>
         <button class="hist-link" id="exportBtn">📤 Exporter</button>
       </div>
+      ${myWorkouts}
       ${chart}
       ${entries}
     </div>`;
@@ -2430,6 +2709,19 @@ function attachHandlers(){
 
   const detailBackBtn = document.getElementById('detailBackBtn');
   if(detailBackBtn) detailBackBtn.onclick = () => { state.screen = 'home'; render(); };
+
+  const deleteCustomBtn = document.getElementById('deleteCustomBtn');
+  if(deleteCustomBtn) deleteCustomBtn.onclick = () => deleteCustomWorkout(state.programKey);
+
+  const openWorkoutBuilderBtn = document.getElementById('openWorkoutBuilderBtn');
+  if(openWorkoutBuilderBtn) openWorkoutBuilderBtn.onclick = () => openWorkoutBuilder(null);
+
+  document.querySelectorAll('[data-open-custom]').forEach(el => {
+    el.onclick = () => { state.programKey = el.dataset.openCustom; state.screen = 'detail'; render(); };
+  });
+  document.querySelectorAll('[data-edit-custom]').forEach(btn => {
+    btn.onclick = (e) => { e.stopPropagation(); openWorkoutBuilder(btn.dataset.editCustom); };
+  });
 
   const maxTestBtn = document.getElementById('maxTestBtn');
   if(maxTestBtn) maxTestBtn.onclick = () => startMaxTest(state.programKey);
@@ -2494,7 +2786,9 @@ loadSeenBadges();
 applyTheme(loadSettingsTheme());
 setAuthMode("signin");
 setupChromeHandlers();
-initAuth().then(() => { if(currentUser) checkForResume(); });
+loadCustomPrograms().then(() => {
+  initAuth().then(() => { if(currentUser) checkForResume(); });
+});
 setTimeout(checkForAppUpdate, 1500);
 </script>
 </body>
