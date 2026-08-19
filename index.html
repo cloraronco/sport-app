@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>FORGE</title>
+<title>VOKRO</title>
 <style>
   :root{
     --bg:#121316;
@@ -23,6 +23,9 @@
   }
   @font-face{font-family:'Barlow Condensed';src:local('Arial Narrow');}
   *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  /* Garde-fou : l'attribut hidden doit toujours l'emporter, même sur un élément qui a un display:flex/grid
+     défini ailleurs (sinon hidden=true ne cache rien visuellement, bug déjà rencontré 2x sur ce fichier). */
+  [hidden]{display:none !important;}
   html,body{margin:0;padding:0;height:100%;color:var(--text);
     background-color: var(--bg);
     background-image: radial-gradient(ellipse 120% 60% at 50% 100%, rgba(255,140,66,0.10), transparent 65%);
@@ -184,11 +187,9 @@
     --steel:#4B6478; --steel-dim:#DCE4EA;
   }
 
-  /* ---------- AUTH ---------- */
-  .auth-screen{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;}
+  /* ---------- AUTH (écran de connexion, intégré dans #app) ---------- */
   .auth-card{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:26px;
-    width:100%; max-width:340px; display:flex; flex-direction:column; gap:12px;}
-  .auth-brand{font-family:var(--font-display), sans-serif; font-size:30px; letter-spacing:2px; margin:0; text-align:center; color:var(--effort);}
+    width:100%; max-width:340px; display:flex; flex-direction:column; gap:12px; margin:0 auto;}
   .auth-card h3{margin:0; text-align:center; font-family:var(--font-display), sans-serif; font-size:20px; letter-spacing:1px; text-transform:uppercase;}
   .auth-form{display:flex; flex-direction:column; gap:10px;}
   .text-input{background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:14px;
@@ -200,10 +201,31 @@
   .auth-error{color:#ff6b6b; font-size:13px; text-align:center; margin:0;}
   .auth-info{color:var(--rest); font-size:13px; text-align:center; margin:0;}
 
+  /* ---------- ACCUEIL SANS COMPTE (écran "Bienvenue") ---------- */
+  .welcome-banner{background:linear-gradient(135deg, var(--effort), #c9391a); color:#fff; border-radius:18px;
+    padding:24px; margin-bottom:18px;}
+  .welcome-banner h2{margin:0 0 10px; font-family:var(--font-display), sans-serif; font-size:24px; letter-spacing:.5px;
+    text-transform:none; color:#fff;}
+  .welcome-banner p{margin:0; font-size:14.5px; line-height:1.5; opacity:.95;}
+  .welcome-feature{display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--line);
+    border-radius:14px; padding:14px 16px; margin-bottom:10px;}
+  .welcome-feature .icon{font-size:24px; flex-shrink:0;}
+  .welcome-feature .txt strong{display:block; font-size:14.5px;}
+  .welcome-feature .txt span{display:block; font-size:12.5px; color:var(--muted); margin-top:2px;}
+
   /* ---------- HEADER / MENU / NOTIFS ---------- */
   #appHeader{position:sticky; top:0; z-index:30; background:var(--bg); padding:16px 16px 10px; border-bottom:1px solid var(--line);}
   .header-top{display:flex; align-items:center; justify-content:space-between;}
-  #appHeader h1{margin:0; font-family:var(--font-display), sans-serif; font-size:24px; letter-spacing:2px;}
+  #appHeader h1{margin:0; font-family:var(--font-display), sans-serif; font-size:24px; letter-spacing:2px;
+    display:flex; align-items:center; gap:8px;}
+  .app-logo-icon{color:var(--effort); flex-shrink:0;}
+
+  /* ---------- ÉCRAN DE CHARGEMENT (splash) ---------- */
+  .splash-screen{position:fixed; inset:0; z-index:200; background:var(--bg); display:flex;
+    flex-direction:column; align-items:center; justify-content:center; gap:14px;
+    transition:opacity .45s ease; opacity:1;}
+  .splash-screen.hide{opacity:0; pointer-events:none;}
+  .splash-title{font-family:var(--font-display), sans-serif; font-size:26px; letter-spacing:3px; color:var(--text);}
   .header-actions{display:flex; align-items:center; gap:8px;}
   .menu-btn{position:relative; width:38px; height:38px; border-radius:10px; background:var(--surface-2);
     border:1px solid var(--line); color:var(--text); font-size:16px; cursor:pointer;}
@@ -247,8 +269,8 @@
   #app{padding-bottom:82px;}
   body.immersive #appHeader, body.immersive #tabbar{display:none;}
   body.immersive #app{padding-bottom:0;}
-  body:not(.logged-in) #appShell{display:none;}
-  body.logged-in #authScreen{display:none;}
+  .header-login-btn{background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:9px 16px; font-size:13.5px; font-weight:700;}
 
   /* ---------- ÉCRANS SECONDAIRES (Profil / Bilan / Paramètres / Communauté) ---------- */
   .screen-pad{padding:18px; padding-bottom:100px;}
@@ -303,6 +325,49 @@
   .post-stats-row{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
   .post-stat-chip{background:var(--surface-2); border:1px solid var(--line); border-radius:999px;
     padding:6px 12px; font-size:12px; font-weight:700; color:var(--rest);}
+  .post-caption{font-size:13px; color:var(--text); margin-top:10px; line-height:1.5;}
+  .post-actions-row{display:flex; align-items:center; gap:16px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line);}
+  .post-like-btn, .post-comment-btn{background:none; border:none; color:var(--muted); font-size:13px; font-weight:600;
+    display:flex; align-items:center; gap:5px; padding:2px 0;}
+  .post-like-btn.liked{color:#ff5a5a;}
+  .post-own-actions{margin-left:auto; display:flex; gap:12px;}
+  .post-icon-btn{background:none; border:none; color:var(--muted); font-size:14px; padding:2px 4px; opacity:.75;}
+
+  .share-bilan-btn-small{margin-top:16px; width:auto; display:inline-flex; align-items:center; gap:6px;
+    background:var(--surface-2); color:var(--effort); border:1px solid var(--effort); border-radius:999px;
+    padding:9px 16px; font-family:var(--font-display), sans-serif; font-size:12.5px; font-weight:800;
+    letter-spacing:.5px; text-transform:uppercase;}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:150; display:flex;
+    align-items:flex-end; justify-content:center;}
+  .modal-card{position:relative; background:var(--surface); border-radius:20px 20px 0 0; padding:20px;
+    width:100%; max-width:480px; max-height:82vh; overflow-y:auto;}
+  @media (min-width:520px){ .modal-overlay{align-items:center;} .modal-card{border-radius:20px;} }
+  .modal-title{font-family:var(--font-display), sans-serif; font-size:16px; letter-spacing:.5px; margin-bottom:14px;}
+  .modal-close-btn{position:absolute; top:14px; right:16px; background:none; border:none; color:var(--muted); font-size:20px;}
+
+  .avatar-crop-canvas-wrap{display:flex; justify-content:center; margin-bottom:14px; touch-action:none;}
+  .avatar-crop-canvas{border-radius:50%; background:var(--surface-2); cursor:grab; touch-action:none;}
+  .avatar-zoom-row{display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:16px;}
+  .avatar-zoom-row input[type=range]{flex:1;}
+
+  .profile-avatar-edit{position:relative; display:inline-block;}
+  .avatar-edit-badge{position:absolute; bottom:-2px; right:-2px; width:26px; height:26px; border-radius:50%;
+    background:var(--effort); color:#1a1a1a; display:flex; align-items:center; justify-content:center; font-size:12px;
+    border:2px solid var(--surface);}
+
+  .profile-subtabs{display:flex; gap:6px; margin:16px 0 12px;}
+  .profile-subtab{flex:1; background:var(--surface-2); border:1px solid var(--line); color:var(--muted);
+    padding:10px; border-radius:12px; font-size:13px; font-weight:700;}
+  .profile-subtab.selected{background:var(--effort-dim); color:var(--effort); border-color:var(--effort);}
+
+  .comment-item{display:flex; gap:9px; padding:9px 0; border-bottom:1px solid var(--line);}
+  .comment-item:last-child{border-bottom:none;}
+  .comment-body{font-size:13px; line-height:1.5;}
+  .comment-meta{font-size:11px; color:var(--muted); margin-top:2px; display:flex; gap:8px; align-items:center;}
+  .comment-delete-btn{background:none; border:none; color:var(--muted); font-size:11px;}
+  .comment-input-row{display:flex; gap:8px; margin-top:12px;}
+  .comment-input-row input{flex:1;}
 
   .settings-row{display:flex; align-items:center; justify-content:space-between; gap:14px; background:var(--surface);
     border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px;}
@@ -335,13 +400,22 @@
   .stepper-btn{width:34px; height:34px; border-radius:9px; background:var(--surface-2); border:1px solid var(--line);
     color:var(--text); font-size:17px; line-height:1; flex-shrink:0;}
   .stepper-val{font-family:var(--font-mono); min-width:50px; text-align:center; font-size:15px; font-weight:700;}
+  .stepper-val-input{font-family:var(--font-mono); width:44px; text-align:center; font-size:15px; font-weight:700;
+    background:var(--surface); color:var(--text); border:1px solid var(--line); border-radius:7px; padding:5px 2px;}
+  .stepper-val-input::-webkit-outer-spin-button, .stepper-val-input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+  .stepper-suffix{font-size:12px; color:var(--muted); margin-left:-4px;}
   .exercise-summary-card{background:var(--surface-2); border:1px solid var(--line); border-radius:14px; padding:13px 14px;
-    margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+    margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px; position:relative; transition:transform .12s;}
+  .exercise-summary-card.dragging{opacity:.88; box-shadow:0 10px 22px rgba(0,0,0,.28); z-index:5; transition:none;}
+  .exercise-drag-handle{cursor:grab; touch-action:none; color:var(--muted); font-size:17px; line-height:1;
+    padding:2px 4px 2px 0; flex-shrink:0; user-select:none;}
   .exercise-summary-name{font-weight:700; font-size:14px;}
   .exercise-summary-detail{font-size:12px; color:var(--muted); margin-top:4px; line-height:1.5;}
   .exercise-remove-btn{background:none; border:none; color:var(--muted); font-size:18px; padding:0 2px; flex-shrink:0;}
   .add-exercise-btn{width:100%; background:var(--surface-2); border:1px dashed var(--line); color:var(--effort);
     border-radius:14px; padding:14px; font-weight:700; font-size:13.5px; letter-spacing:.3px;}
+  .draft-summary{background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:11px 14px;
+    font-size:12.5px; color:var(--muted); margin-top:14px; text-align:center; line-height:1.5;}
   .custom-workout-card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px;
     margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px;}
   .custom-workout-name{font-weight:700; font-size:14px;}
@@ -349,34 +423,24 @@
 </style>
 </head>
 <body>
-<div id="authScreen" class="auth-screen" hidden>
-  <div class="auth-card">
-    <h1 class="auth-brand">FORGE</h1>
-    <h3 id="authTitle">Se connecter</h3>
-    <form id="authForm" class="auth-form" novalidate>
-      <input type="email" id="authEmail" class="text-input" placeholder="Adresse email" required autocomplete="email">
-      <input type="password" id="authPassword" class="text-input" placeholder="Mot de passe" required autocomplete="current-password" minlength="8">
-      <p class="hint" id="authPasswordHint" hidden>8 caractères minimum, avec majuscule, minuscule, chiffre et caractère spécial.</p>
-      <button type="submit" class="primary-btn" id="authSubmitBtn">Se connecter</button>
-    </form>
-    <p id="authError" class="auth-error" hidden></p>
-    <p id="authInfo" class="auth-info" hidden></p>
-    <button type="button" class="link-btn" id="authSwitchBtn">Créer un compte</button>
-  </div>
+<div id="splashScreen" class="splash-screen">
+  <svg class="app-logo-icon" width="64" height="32" viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="6" width="7" height="12" rx="2" fill="currentColor"/><rect x="40" y="6" width="7" height="12" rx="2" fill="currentColor"/><rect x="8" y="9" width="4" height="6" fill="currentColor"/><rect x="36" y="9" width="4" height="6" fill="currentColor"/><rect x="12" y="10.5" width="24" height="3" rx="1.5" fill="currentColor"/></svg>
+  <div class="splash-title">VOKRO</div>
 </div>
-
-<div id="appShell" hidden>
+<div id="appShell">
   <header id="appHeader">
     <div class="header-top">
-      <h1>FORGE</h1>
-      <div class="header-actions">
+      <h1><svg class="app-logo-icon" width="22" height="22" viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="6" width="7" height="12" rx="2" fill="currentColor"/><rect x="40" y="6" width="7" height="12" rx="2" fill="currentColor"/><rect x="8" y="9" width="4" height="6" fill="currentColor"/><rect x="36" y="9" width="4" height="6" fill="currentColor"/><rect x="12" y="10.5" width="24" height="3" rx="1.5" fill="currentColor"/></svg>VOKRO</h1>
+      <div class="header-actions" id="headerActionsLoggedIn" hidden>
         <button type="button" id="headerAvatarBtn" class="header-avatar-btn" aria-label="Mon profil"></button>
         <button type="button" id="notifBtn" class="menu-btn" aria-label="Notifications">🔔<span id="notifBadge" class="menu-badge" hidden></span></button>
         <button type="button" id="menuBtn" class="menu-btn" aria-label="Menu">☰</button>
       </div>
+      <button type="button" id="headerLoginBtn" class="header-login-btn" hidden>Se connecter</button>
     </div>
     <div id="menuPanel" class="menu-panel" hidden>
       <button type="button" class="menu-item" data-action="profil">👤 Profil</button>
+      <button type="button" class="menu-item" data-action="history">📋 Historique</button>
       <button type="button" class="menu-item" data-action="bilan">📊 Bilan</button>
       <button type="button" class="menu-item" data-action="parametres">⚙️ Paramètres</button>
     </div>
@@ -394,6 +458,7 @@
     <button type="button" class="tab-btn" data-tab="communaute">👥<span>Communauté</span></button>
   </nav>
 </div>
+<div id="modalRoot"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -414,6 +479,27 @@ let viewProfileId = null;   // profil consulté (null = le mien)
 let bilanPeriod = "semaine";
 let communityMode = "public"; // "public" | "mine"
 let editingProfile = false;
+let profileTab = "entrainements"; // "entrainements" | "publications" — onglets de l'écran Profil
+
+/* ---------------- MODALES GÉNÉRIQUES ---------------- */
+function openModal(titleHtml, bodyHtml){
+  const root = document.getElementById("modalRoot");
+  if(!root) return;
+  root.innerHTML = `
+    <div class="modal-overlay" id="activeModalOverlay">
+      <div class="modal-card">
+        <button type="button" class="modal-close-btn" id="modalCloseBtn" aria-label="Fermer">✕</button>
+        <div class="modal-title">${titleHtml}</div>
+        <div id="modalBody">${bodyHtml}</div>
+      </div>
+    </div>`;
+  document.getElementById("modalCloseBtn").onclick = closeModal;
+  document.getElementById("activeModalOverlay").onclick = (e) => { if(e.target.id === "activeModalOverlay") closeModal(); };
+}
+function closeModal(){
+  const root = document.getElementById("modalRoot");
+  if(root) root.innerHTML = "";
+}
 
 /* ---------------- AVATAR ---------------- */
 function avatarInitial(profile, fallbackEmail){
@@ -429,6 +515,129 @@ function applyAvatarToEl(el, profile, fallbackEmail){
   } else {
     el.textContent = avatarInitial(profile, fallbackEmail);
     el.style.background = (profile && profile.avatar_color) || "#ff5a2b";
+  }
+}
+function updateSettingsAvatarPreview(){
+  const el = document.getElementById("settingsAvatarPreview");
+  if(el) applyAvatarToEl(el, currentProfile, currentUser && currentUser.email);
+}
+
+/* ---------------- PHOTO DE PROFIL : sélection + recadrage/zoom ---------------- */
+const AVATAR_CROP_SIZE = 260;
+let avatarCropState = null; // { img, scale, minScale, maxScale, offsetX, offsetY }
+
+function openAvatarCropModal(file){
+  if(!file.type || !file.type.startsWith("image/")){ alert("Choisis un fichier image."); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const size = AVATAR_CROP_SIZE;
+      const minScale = Math.max(size / img.width, size / img.height);
+      avatarCropState = { img, scale: minScale, minScale, maxScale: minScale * 4, offsetX: 0, offsetY: 0 };
+      openModal("Photo de profil", `
+        <div class="avatar-crop-canvas-wrap">
+          <canvas id="avatarCropCanvas" width="${size}" height="${size}" class="avatar-crop-canvas"></canvas>
+        </div>
+        <div class="avatar-zoom-row">🔍 <input type="range" id="avatarZoomRange" min="0" max="100" value="0"></div>
+        <button type="button" class="primary-btn" id="confirmAvatarCropBtn">Valider la photo</button>
+        <button type="button" class="link-btn" id="cancelAvatarCropBtn">Annuler</button>
+        <p id="avatarCropMsg" class="auth-error" hidden></p>
+      `);
+      attachAvatarCropHandlers();
+      drawAvatarCrop();
+    };
+    img.onerror = () => alert("Cette image n'a pas pu être ouverte, essaie une autre photo.");
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+function clampAvatarOffset(){
+  const s = avatarCropState;
+  const size = AVATAR_CROP_SIZE;
+  const w = s.img.width * s.scale, h = s.img.height * s.scale;
+  const maxOffX = Math.max(0, (w - size) / 2);
+  const maxOffY = Math.max(0, (h - size) / 2);
+  s.offsetX = Math.min(maxOffX, Math.max(-maxOffX, s.offsetX));
+  s.offsetY = Math.min(maxOffY, Math.max(-maxOffY, s.offsetY));
+}
+function drawAvatarCrop(){
+  const canvas = document.getElementById("avatarCropCanvas");
+  if(!canvas || !avatarCropState) return;
+  const ctx = canvas.getContext("2d");
+  const { img, scale, offsetX, offsetY } = avatarCropState;
+  const size = canvas.width;
+  ctx.clearRect(0, 0, size, size);
+  const w = img.width * scale, h = img.height * scale;
+  const x = (size - w) / 2 + offsetX;
+  const y = (size - h) / 2 + offsetY;
+  ctx.drawImage(img, x, y, w, h);
+}
+function attachAvatarCropHandlers(){
+  const canvas = document.getElementById("avatarCropCanvas");
+  const zoomRange = document.getElementById("avatarZoomRange");
+  let lastX = 0, lastY = 0;
+  function onMove(e){
+    if(!avatarCropState) return;
+    avatarCropState.offsetX += e.clientX - lastX;
+    avatarCropState.offsetY += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    clampAvatarOffset();
+    drawAvatarCrop();
+  }
+  function onUp(){
+    canvas.style.cursor = "grab";
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+  }
+  canvas.onpointerdown = (e) => {
+    lastX = e.clientX; lastY = e.clientY;
+    canvas.style.cursor = "grabbing";
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  };
+  zoomRange.oninput = () => {
+    const t = parseInt(zoomRange.value, 10) / 100;
+    avatarCropState.scale = avatarCropState.minScale + t * (avatarCropState.maxScale - avatarCropState.minScale);
+    clampAvatarOffset();
+    drawAvatarCrop();
+  };
+  document.getElementById("cancelAvatarCropBtn").onclick = closeModal;
+  document.getElementById("confirmAvatarCropBtn").onclick = confirmAvatarCrop;
+}
+async function confirmAvatarCrop(){
+  if(!avatarCropState || !sb || !currentUser) return;
+  const btn = document.getElementById("confirmAvatarCropBtn");
+  const msgEl = document.getElementById("avatarCropMsg");
+  btn.disabled = true; btn.textContent = "Envoi…";
+  try{
+    const OUT = 480;
+    const out = document.createElement("canvas");
+    out.width = OUT; out.height = OUT;
+    const octx = out.getContext("2d");
+    const { img, scale, offsetX, offsetY } = avatarCropState;
+    const ratio = OUT / AVATAR_CROP_SIZE;
+    const w = img.width * scale * ratio, h = img.height * scale * ratio;
+    const x = (OUT - w) / 2 + offsetX * ratio;
+    const y = (OUT - h) / 2 + offsetY * ratio;
+    octx.drawImage(img, x, y, w, h);
+    const blob = await new Promise(resolve => out.toBlob(resolve, "image/jpeg", 0.88));
+    if(!blob) throw new Error("export impossible");
+    const path = `${currentUser.id}/avatar.jpg`;
+    const { error: upErr } = await sb.storage.from("avatars").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
+    if(upErr) throw upErr;
+    const { data: pub } = sb.storage.from("avatars").getPublicUrl(path);
+    const avatarUrl = pub.publicUrl + "?v=" + Date.now();
+    const { error: dbErr } = await sb.from("profiles").update({ avatar_url: avatarUrl }).eq("id", currentUser.id);
+    if(dbErr) throw dbErr;
+    currentProfile = Object.assign({}, currentProfile, { avatar_url: avatarUrl });
+    updateHeaderAvatar();
+    updateSettingsAvatarPreview();
+    avatarCropState = null;
+    closeModal();
+  }catch(e){
+    if(msgEl){ msgEl.hidden = false; msgEl.textContent = "Impossible d'enregistrer la photo pour le moment."; }
+    btn.disabled = false; btn.textContent = "Valider la photo";
   }
 }
 
@@ -456,13 +665,18 @@ async function loadProfile(user){
 function renderAuthUI(){
   const loggedIn = !!currentUser;
   document.body.classList.toggle("logged-in", loggedIn);
-  document.getElementById("authScreen").hidden = loggedIn;
-  document.getElementById("appShell").hidden = !loggedIn;
-  if(!loggedIn) return;
-  updateHeaderAvatar();
-  updateNotifBadge();
+  const loggedInActions = document.getElementById("headerActionsLoggedIn");
+  const loginBtn = document.getElementById("headerLoginBtn");
+  if(loggedInActions) loggedInActions.hidden = !loggedIn;
+  if(loginBtn) loginBtn.hidden = loggedIn;
+  if(loggedIn){
+    if(state.screen === "welcome" || state.screen === "auth"){ state.screen = "home"; state.pendingTab = null; }
+    updateHeaderAvatar();
+    updateNotifBadge();
+  } else if(!["welcome", "auth"].includes(state.screen)){
+    state.screen = "welcome"; state.pendingTab = null;
+  }
   render();
-  renderChrome();
 }
 
 function authErrorMessage(err){
@@ -479,12 +693,90 @@ function passwordIsStrongEnough(password){
 }
 function setAuthMode(mode){
   authMode = mode;
-  document.getElementById("authTitle").textContent = mode === "signup" ? "Créer un compte" : "Se connecter";
+  const titleEl = document.getElementById("authTitle");
+  if(!titleEl) return; // écran de connexion pas encore affiché : la variable suffit, le prochain render() s'en sert
+  titleEl.textContent = mode === "signup" ? "Créer un compte" : "Se connecter";
   document.getElementById("authSubmitBtn").textContent = mode === "signup" ? "Créer mon compte" : "Se connecter";
   document.getElementById("authSwitchBtn").textContent = mode === "signup" ? "J'ai déjà un compte" : "Créer un compte";
   document.getElementById("authPasswordHint").hidden = mode !== "signup";
   document.getElementById("authError").hidden = true;
   document.getElementById("authInfo").hidden = true;
+}
+
+/* ---------------- ÉCRAN D'ACCUEIL SANS COMPTE / ÉCRAN DE CONNEXION ---------------- */
+function renderWelcome(){
+  return `
+    <div class="screen-pad">
+      <div class="welcome-banner">
+        <h2>Bienvenue sur Vokro 🏋️</h2>
+        <p>Tes séances, ta progression, ta communauté sportive — connecte-toi pour profiter de toutes les fonctionnalités.</p>
+      </div>
+      <div class="welcome-feature"><span class="icon">🏋️</span><div class="txt"><strong>Mes entraînements</strong><span>Crée tes propres entraînements sur mesure</span></div></div>
+      <div class="welcome-feature"><span class="icon">💪</span><div class="txt"><strong>S'entraîner</strong><span>Pompes, abdos, tractions, et tes séances perso</span></div></div>
+      <div class="welcome-feature"><span class="icon">📊</span><div class="txt"><strong>Bilan</strong><span>Tes stats semaine / mois / année, à partager</span></div></div>
+      <div class="welcome-feature"><span class="icon">👥</span><div class="txt"><strong>Communauté</strong><span>Suis tes amis, compare vos progrès</span></div></div>
+      <div class="welcome-feature"><span class="icon">🏆</span><div class="txt"><strong>Trophées</strong><span>Débloque des succès au fil de tes séances</span></div></div>
+      <button type="button" class="share-bilan-btn" id="welcomeCtaBtn" style="margin-top:20px;">Se connecter ou créer un compte</button>
+    </div>`;
+}
+function renderAuthScreen(){
+  const isSignup = authMode === "signup";
+  return `
+    <div class="screen-pad">
+      <button type="button" class="back-link" id="authBackBtn">← Retour</button>
+      <div class="auth-card">
+        <h3 id="authTitle">${isSignup ? "Créer un compte" : "Se connecter"}</h3>
+        <form id="authForm" class="auth-form" novalidate>
+          <input type="email" id="authEmail" class="text-input" placeholder="Adresse email" required autocomplete="email">
+          <input type="password" id="authPassword" class="text-input" placeholder="Mot de passe" required autocomplete="current-password" minlength="8">
+          <p class="hint" id="authPasswordHint" ${isSignup ? "" : "hidden"}>8 caractères minimum, avec majuscule, minuscule, chiffre et caractère spécial.</p>
+          <button type="submit" class="primary-btn" id="authSubmitBtn">${isSignup ? "Créer mon compte" : "Se connecter"}</button>
+        </form>
+        <p id="authError" class="auth-error" hidden></p>
+        <p id="authInfo" class="auth-info" hidden></p>
+        <button type="button" class="link-btn" id="authSwitchBtn">${isSignup ? "J'ai déjà un compte" : "Créer un compte"}</button>
+      </div>
+    </div>`;
+}
+function attachAuthScreenHandlers(){
+  const backBtn = document.getElementById("authBackBtn");
+  if(backBtn) backBtn.onclick = () => { state.pendingTab = null; state.screen = "welcome"; render(); };
+
+  const switchBtn = document.getElementById("authSwitchBtn");
+  if(switchBtn) switchBtn.onclick = () => setAuthMode(authMode === "signup" ? "signin" : "signup");
+
+  const form = document.getElementById("authForm");
+  if(form) form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById("authError");
+    const infoEl = document.getElementById("authInfo");
+    const submitBtn = document.getElementById("authSubmitBtn");
+    if(!sb){ errorEl.textContent = "Connexion au serveur indisponible."; errorEl.hidden = false; return; }
+    const email = document.getElementById("authEmail").value.trim();
+    const password = document.getElementById("authPassword").value;
+    errorEl.hidden = true; infoEl.hidden = true;
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errorEl.textContent = "Adresse email invalide."; errorEl.hidden = false; return; }
+    if(authMode === "signup" && !passwordIsStrongEnough(password)){
+      errorEl.textContent = "Mot de passe trop simple : 8 caractères min., majuscule, minuscule, chiffre, caractère spécial.";
+      errorEl.hidden = false; return;
+    }
+    submitBtn.disabled = true; submitBtn.textContent = "…";
+    try{
+      if(authMode === "signup"){
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if(error) throw error;
+        if(!data.session){
+          infoEl.textContent = "Vérifie tes emails pour confirmer ton compte, puis connecte-toi.";
+          infoEl.hidden = false;
+          setAuthMode("signin");
+        }
+      } else {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if(error) throw error;
+      }
+    }catch(err){ errorEl.textContent = authErrorMessage(err); errorEl.hidden = false; }
+    finally{ submitBtn.disabled = false; submitBtn.textContent = authMode === "signup" ? "Créer mon compte" : "Se connecter"; }
+  });
 }
 
 /* ---------------- HEADER : macaron / cloche / menu ---------------- */
@@ -684,7 +976,7 @@ async function loadFeed(){
   if(!sb || !currentUser){ listEl.innerHTML = `<p class="state-msg">Connecte-toi pour voir le fil.</p>`; return; }
   listEl.innerHTML = `<p class="state-msg">Chargement…</p>`;
   try{
-    let query = sb.from("posts").select("id, user_id, type, period, stats, tagged_user_id, created_at, profiles!posts_user_id_fkey(username, avatar_color, avatar_url), tagged:profiles!posts_tagged_user_id_fkey(username)").order("created_at", { ascending:false }).limit(30);
+    let query = sb.from("posts").select("id, user_id, type, period, stats, caption, tagged_user_id, created_at, profiles!posts_user_id_fkey(username, avatar_color, avatar_url), tagged:profiles!posts_tagged_user_id_fkey(username)").order("created_at", { ascending:false }).limit(30);
     if(communityMode === "mine"){
       const { data: follows } = await sb.from("follows").select("followed_id").eq("follower_id", currentUser.id).eq("status", "accepted");
       const ids = (follows || []).map(f => f.followed_id);
@@ -693,11 +985,34 @@ async function loadFeed(){
     }
     const { data, error } = await query;
     if(error) throw error;
-    if(!data || !data.length){ listEl.innerHTML = `<p class="state-msg">Aucune publication pour l'instant.</p>`; return; }
-    listEl.innerHTML = data.map(renderFeedCardHTML).join("");
+    await renderFeedListInto(listEl, data, `<p class="state-msg">Aucune publication pour l'instant.</p>`);
   }catch(e){ listEl.innerHTML = `<p class="state-msg">Fil indisponible pour le moment.</p>`; }
 }
-function renderFeedCardHTML(post){
+/* Rendu partagé d'une liste de publications (fil Communauté + onglet Publications du Profil) */
+async function renderFeedListInto(listEl, posts, emptyHtml){
+  if(!posts || !posts.length){ listEl.innerHTML = emptyHtml; return; }
+  const social = await enrichPostsWithSocial(posts.map(p => p.id));
+  listEl.innerHTML = posts.map(p => renderFeedCardHTML(p, social.likes[p.id], social.comments[p.id] || 0)).join("");
+  attachFeedCardHandlers(listEl);
+}
+async function enrichPostsWithSocial(ids){
+  const likes = {}, comments = {};
+  if(!sb || !currentUser || !ids.length) return { likes, comments };
+  try{
+    const [{ data: likeRows }, { data: commentRows }] = await Promise.all([
+      sb.from("post_likes").select("post_id, user_id").in("post_id", ids),
+      sb.from("post_comments").select("post_id").in("post_id", ids)
+    ]);
+    (likeRows || []).forEach(r => {
+      if(!likes[r.post_id]) likes[r.post_id] = { count: 0, mine: false };
+      likes[r.post_id].count += 1;
+      if(r.user_id === currentUser.id) likes[r.post_id].mine = true;
+    });
+    (commentRows || []).forEach(r => { comments[r.post_id] = (comments[r.post_id] || 0) + 1; });
+  }catch(e){}
+  return { likes, comments };
+}
+function renderFeedCardHTML(post, likeInfo, commentCount){
   const p = post.profiles || {};
   const avatarStyle = p.avatar_url ? `background:url('${p.avatar_url}') center/cover no-repeat;` : `background:${p.avatar_color || '#ff5a2b'};`;
   const initial = (p.username || "?")[0].toUpperCase();
@@ -711,8 +1026,17 @@ function renderFeedCardHTML(post){
     stats.abdos ? `${stats.abdos} abdos` : null,
     stats.pompes ? `${stats.pompes} pompes` : null
   ].filter(Boolean).map(c => `<span class="post-stat-chip">${c}</span>`).join("");
+  const captionHtml = post.caption ? `<div class="post-caption">${escapeHtml(post.caption)}</div>` : "";
+  const isOwn = currentUser && post.user_id === currentUser.id;
+  const liked = likeInfo && likeInfo.mine;
+  const likeCount = likeInfo ? likeInfo.count : 0;
+  const ownActionsHtml = isOwn ? `
+    <div class="post-own-actions">
+      <button type="button" class="post-icon-btn" data-edit-post="${post.id}" aria-label="Modifier">✏️</button>
+      <button type="button" class="post-icon-btn" data-delete-post="${post.id}" aria-label="Supprimer">🗑️</button>
+    </div>` : "";
   return `
-    <div class="post-card">
+    <div class="post-card" data-post-card="${post.id}">
       <div class="post-head">
         <div class="post-avatar" style="${avatarStyle}">${p.avatar_url ? "" : initial}</div>
         <div>
@@ -721,16 +1045,156 @@ function renderFeedCardHTML(post){
         </div>
       </div>
       <div class="post-stats-row">${chips || '<span class="post-stat-chip">Semaine calme</span>'}</div>
+      ${captionHtml}
+      <div class="post-actions-row">
+        <button type="button" class="post-like-btn${liked ? ' liked' : ''}" data-like-post="${post.id}" data-liked="${liked ? '1' : '0'}">${liked ? '❤️' : '🤍'} <span data-like-count>${likeCount}</span></button>
+        <button type="button" class="post-comment-btn" data-comment-post="${post.id}">💬 <span data-comment-count>${commentCount}</span></button>
+        ${ownActionsHtml}
+      </div>
     </div>`;
+}
+function attachFeedCardHandlers(scopeEl){
+  const scope = scopeEl || document;
+  scope.querySelectorAll("[data-like-post]").forEach(btn => {
+    btn.onclick = () => toggleLike(btn);
+  });
+  scope.querySelectorAll("[data-comment-post]").forEach(btn => {
+    btn.onclick = () => openCommentsModal(btn.dataset.commentPost);
+  });
+  scope.querySelectorAll("[data-edit-post]").forEach(btn => {
+    btn.onclick = () => openEditCaptionModal(btn.dataset.editPost);
+  });
+  scope.querySelectorAll("[data-delete-post]").forEach(btn => {
+    btn.onclick = () => deletePost(btn.dataset.deletePost, btn.closest("[data-post-card]"));
+  });
+}
+async function toggleLike(btn){
+  if(!sb || !currentUser) return;
+  const postId = btn.dataset.likePost;
+  const wasLiked = btn.dataset.liked === "1";
+  const countEl = btn.querySelector("[data-like-count]");
+  btn.disabled = true;
+  // mise à jour optimiste
+  btn.dataset.liked = wasLiked ? "0" : "1";
+  btn.classList.toggle("liked", !wasLiked);
+  btn.firstChild.textContent = wasLiked ? "🤍 " : "❤️ ";
+  if(countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent, 10) + (wasLiked ? -1 : 1));
+  try{
+    if(wasLiked){
+      const { error } = await sb.from("post_likes").delete().eq("post_id", postId).eq("user_id", currentUser.id);
+      if(error) throw error;
+    } else {
+      const { error } = await sb.from("post_likes").insert({ post_id: postId, user_id: currentUser.id });
+      if(error) throw error;
+    }
+  }catch(e){
+    // rollback si l'action a échoué côté serveur
+    btn.dataset.liked = wasLiked ? "1" : "0";
+    btn.classList.toggle("liked", wasLiked);
+    btn.firstChild.textContent = wasLiked ? "❤️ " : "🤍 ";
+    if(countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent, 10) + (wasLiked ? 1 : -1));
+  }finally{ btn.disabled = false; }
+}
+async function openCommentsModal(postId){
+  openModal("Commentaires", `<div id="commentsList"><p class="state-msg">Chargement…</p></div>
+    <div class="comment-input-row">
+      <input type="text" id="newCommentInput" class="text-input" placeholder="Ajouter un commentaire…" maxlength="300" style="margin-bottom:0;">
+      <button type="button" class="primary-btn" id="sendCommentBtn" style="padding:11px 16px;">Envoyer</button>
+    </div>`);
+  await loadCommentsInto(postId);
+  const sendBtn = document.getElementById("sendCommentBtn");
+  const input = document.getElementById("newCommentInput");
+  if(sendBtn) sendBtn.onclick = () => submitComment(postId, input, sendBtn);
+  if(input) input.onkeydown = (e) => { if(e.key === "Enter") submitComment(postId, input, sendBtn); };
+}
+async function loadCommentsInto(postId){
+  const listEl = document.getElementById("commentsList");
+  if(!listEl || !sb) return;
+  try{
+    const { data, error } = await sb.from("post_comments")
+      .select("id, body, user_id, created_at, profiles!post_comments_user_id_fkey(username)")
+      .eq("post_id", postId).order("created_at", { ascending: true });
+    if(error) throw error;
+    if(!data || !data.length){ listEl.innerHTML = `<p class="state-msg">Aucun commentaire pour l'instant.</p>`; return; }
+    listEl.innerHTML = data.map(c => `
+      <div class="comment-item" data-comment-id="${c.id}">
+        <div>
+          <div class="comment-body"><b>${escapeHtml((c.profiles && c.profiles.username) || "?")}</b> ${escapeHtml(c.body)}</div>
+          <div class="comment-meta">${formatRelativeDate(c.created_at)}${currentUser && c.user_id === currentUser.id ? ` · <button type="button" class="comment-delete-btn" data-delete-comment="${c.id}">Supprimer</button>` : ""}</div>
+        </div>
+      </div>`).join("");
+    listEl.querySelectorAll("[data-delete-comment]").forEach(btn => {
+      btn.onclick = async () => {
+        try{
+          await sb.from("post_comments").delete().eq("id", btn.dataset.deleteComment);
+          loadCommentsInto(postId);
+          updateFeedCommentCount(postId, -1);
+        }catch(e){}
+      };
+    });
+  }catch(e){ listEl.innerHTML = `<p class="state-msg">Commentaires indisponibles pour le moment.</p>`; }
+}
+async function submitComment(postId, input, sendBtn){
+  if(!sb || !currentUser) return;
+  const body = (input.value || "").trim();
+  if(!body) return;
+  sendBtn.disabled = true;
+  try{
+    const { error } = await sb.from("post_comments").insert({ post_id: postId, user_id: currentUser.id, body });
+    if(error) throw error;
+    input.value = "";
+    await loadCommentsInto(postId);
+    updateFeedCommentCount(postId, 1);
+  }catch(e){ alert("Impossible d'envoyer ce commentaire pour le moment."); }
+  finally{ sendBtn.disabled = false; }
+}
+function updateFeedCommentCount(postId, delta){
+  document.querySelectorAll(`[data-comment-post="${postId}"] [data-comment-count]`).forEach(el => {
+    el.textContent = Math.max(0, parseInt(el.textContent, 10) + delta);
+  });
+}
+async function openEditCaptionModal(postId){
+  const card = document.querySelector(`[data-post-card="${postId}"] .post-caption`);
+  const current = card ? card.textContent : "";
+  openModal("Modifier la légende", `
+    <textarea id="editCaptionInput" class="text-input" placeholder="Un commentaire sur ce bilan…" maxlength="200" rows="4">${escapeHtml(current)}</textarea>
+    <button type="button" class="primary-btn" id="saveCaptionBtn" style="margin-top:10px;">Enregistrer</button>
+    <p id="editCaptionMsg" class="auth-error" hidden></p>`);
+  document.getElementById("saveCaptionBtn").onclick = async () => {
+    const btn = document.getElementById("saveCaptionBtn");
+    const msgEl = document.getElementById("editCaptionMsg");
+    const caption = document.getElementById("editCaptionInput").value.trim();
+    btn.disabled = true; btn.textContent = "…";
+    try{
+      const { error } = await sb.from("posts").update({ caption: caption || null }).eq("id", postId);
+      if(error) throw error;
+      closeModal();
+      if(state.screen === "communaute") loadFeed();
+      else if(state.screen === "profil") loadProfileTabContent();
+    }catch(e){
+      msgEl.hidden = false; msgEl.textContent = "Impossible d'enregistrer pour le moment.";
+      btn.disabled = false; btn.textContent = "Enregistrer";
+    }
+  };
+}
+async function deletePost(postId, cardEl){
+  if(!confirm("Supprimer définitivement cette publication ?")) return;
+  try{
+    const { error } = await sb.from("posts").delete().eq("id", postId);
+    if(error) throw error;
+    if(cardEl) cardEl.remove();
+  }catch(e){ alert("Impossible de supprimer cette publication pour le moment."); }
 }
 
 /* ---------------- ÉCRAN PROFIL ---------------- */
 function renderProfil(){
   return `<div class="screen-pad" id="profilContent"><p class="state-msg">Chargement…</p></div>`;
 }
+let profilScreenState = null; // { targetId, isOwn, profile } — mémorisé pour le rechargement d'onglet
 async function loadProfilScreen(){
   const wrap = document.getElementById("profilContent");
   if(!wrap) return;
+  profileTab = "entrainements";
   const targetId = viewProfileId || (currentUser && currentUser.id);
   const isOwn = !viewProfileId || (currentUser && targetId === currentUser.id);
   let profile = isOwn ? currentProfile : null;
@@ -741,6 +1205,7 @@ async function loadProfilScreen(){
     }catch(e){}
   }
   if(!profile){ wrap.innerHTML = `<p class="state-msg">Profil introuvable.</p>`; return; }
+  profilScreenState = { targetId, isOwn, profile };
 
   let followerCount = 0, followingCount = 0, followState = null;
   try{
@@ -757,21 +1222,8 @@ async function loadProfilScreen(){
 
   const initial = (profile.username || "?")[0].toUpperCase();
   const avatarStyle = profile.avatar_url ? `background:url('${profile.avatar_url}') center/cover no-repeat;` : `background:${profile.avatar_color || '#ff5a2b'};`;
-  const sessionsCount = isOwn ? sessionHistory.filter(e => e.validated && !e.isMaxTest).length : 0;
   const followBtnHtml = isOwn ? "" : `<button type="button" class="follow-btn" id="followBtn">+ Suivre</button>`;
-  const bioHtml = profile.bio ? `<p class="profile-bio">${profile.bio}</p>` : (isOwn ? `<p class="profile-bio" style="color:var(--muted);">Ajoute une bio depuis "Modifier mon profil".</p>` : "");
-  const editHtml = isOwn ? `
-    <button type="button" class="link-btn" id="editProfileBtn" style="margin-top:12px; text-align:left; padding:0;">✏️ Modifier mon profil</button>
-    <div id="editProfileForm" hidden style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
-      <input type="text" id="editUsername" class="text-input" placeholder="Pseudo" maxlength="24" value="${profile.username || ''}">
-      <textarea id="editBio" class="text-input" placeholder="Bio (facultatif)" maxlength="140" rows="3">${profile.bio || ''}</textarea>
-      <button type="button" class="primary-btn" id="saveProfileBtn">Enregistrer</button>
-    </div>` : "";
-  const historyHtml = isOwn
-    ? (sessionHistory.length
-        ? sessionHistory.slice(0,10).map(e => `<div class="post-card" style="margin-bottom:8px;"><div class="post-username">${e.label}</div><div class="post-date">${new Date(e.date).toLocaleDateString('fr-FR')} · ${e.validated ? 'validée' : 'incomplète'}</div></div>`).join("")
-        : `<p class="state-msg">Aucun entraînement pour l'instant.</p>`)
-    : `<p class="state-msg">Les entraînements partagés arriveront ici prochainement.</p>`;
+  const bioHtml = profile.bio ? `<p class="profile-bio">${profile.bio}</p>` : (isOwn ? `<p class="profile-bio" style="color:var(--muted);">Ajoute une bio depuis Paramètres → Profil.</p>` : "");
 
   wrap.innerHTML = `
     <button type="button" class="back-link" id="profilBackBtn">← Retour</button>
@@ -779,42 +1231,58 @@ async function loadProfilScreen(){
       <div class="avatar-circle" style="${avatarStyle}">${profile.avatar_url ? "" : initial}</div>
       <div>
         <div class="profile-name">${profile.username || "?"}</div>
-        <div class="profile-privacy">${profile.is_private ? "🔒 Compte privé" : "🌍 Compte public"}</div>
       </div>
     </div>
     ${bioHtml}
-    ${editHtml}
     ${followBtnHtml}
     <div class="profile-stats-row">
-      <div class="profile-stat"><span class="profile-stat-num">${sessionsCount}</span><span class="profile-stat-label">séances</span></div>
+      <div class="profile-stat"><span class="profile-stat-num">${isOwn ? sessionHistory.filter(e => e.validated && !e.isMaxTest).length : 0}</span><span class="profile-stat-label">séances</span></div>
       <div class="profile-stat"><span class="profile-stat-num">${followerCount}</span><span class="profile-stat-label">abonnés</span></div>
       <div class="profile-stat"><span class="profile-stat-num">${followingCount}</span><span class="profile-stat-label">abonnements</span></div>
     </div>
-    <div class="profile-section-title">Entraînements</div>
-    ${historyHtml}
+    <div class="profile-subtabs">
+      <button type="button" class="profile-subtab selected" data-profile-tab="entrainements">Entraînements</button>
+      <button type="button" class="profile-subtab" data-profile-tab="publications">Publications</button>
+    </div>
+    <div id="profileTabContent"><p class="state-msg">Chargement…</p></div>
   `;
 
   const backBtn = document.getElementById("profilBackBtn");
   if(backBtn) backBtn.onclick = () => { viewProfileId = null; state.screen = "home"; render(); renderChrome(); };
   const followBtn = document.getElementById("followBtn");
   if(followBtn){ updateFollowBtnUI(followBtn, followState); followBtn.onclick = () => toggleFollow(targetId, profile.is_private, followBtn); }
-  const editBtn = document.getElementById("editProfileBtn");
-  if(editBtn) editBtn.onclick = () => { document.getElementById("editProfileForm").hidden = false; editBtn.hidden = true; };
-  const saveBtn = document.getElementById("saveProfileBtn");
-  if(saveBtn) saveBtn.onclick = async () => {
-    const username = document.getElementById("editUsername").value.trim();
-    const bio = document.getElementById("editBio").value.trim();
-    if(!username || !sb || !currentUser) return;
-    saveBtn.disabled = true; saveBtn.textContent = "…";
-    try{
-      const { error } = await sb.from("profiles").update({ username, bio }).eq("id", currentUser.id);
-      if(error) throw error;
-      currentProfile = Object.assign({}, currentProfile, { username, bio });
-      updateHeaderAvatar();
-      loadProfilScreen();
-    }catch(e){ alert("Impossible d'enregistrer : " + (e.message || "erreur inconnue")); }
-    finally{ saveBtn.disabled = false; saveBtn.textContent = "Enregistrer"; }
-  };
+  document.querySelectorAll("[data-profile-tab]").forEach(btn => {
+    btn.onclick = () => {
+      if(btn.dataset.profileTab === profileTab) return;
+      profileTab = btn.dataset.profileTab;
+      document.querySelectorAll("[data-profile-tab]").forEach(b => b.classList.toggle("selected", b === btn));
+      loadProfileTabContent();
+    };
+  });
+  loadProfileTabContent();
+}
+async function loadProfileTabContent(){
+  const contentEl = document.getElementById("profileTabContent");
+  if(!contentEl || !profilScreenState) return;
+  const { targetId, isOwn } = profilScreenState;
+  if(profileTab === "entrainements"){
+    contentEl.innerHTML = isOwn
+      ? (sessionHistory.length
+          ? sessionHistory.slice(0,10).map(e => `<div class="post-card" style="margin-bottom:8px;"><div class="post-username">${e.label}</div><div class="post-date">${new Date(e.date).toLocaleDateString('fr-FR')} · ${e.validated ? 'validée' : 'incomplète'}</div></div>`).join("")
+          : `<p class="state-msg">Aucun entraînement pour l'instant.</p>`)
+      : `<p class="state-msg">Les entraînements partagés arriveront ici prochainement.</p>`;
+    return;
+  }
+  // onglet Publications
+  contentEl.innerHTML = `<p class="state-msg">Chargement…</p>`;
+  if(!sb || !currentUser){ contentEl.innerHTML = `<p class="state-msg">Connecte-toi pour voir les publications.</p>`; return; }
+  try{
+    const { data, error } = await sb.from("posts")
+      .select("id, user_id, type, period, stats, caption, tagged_user_id, created_at, profiles!posts_user_id_fkey(username, avatar_color, avatar_url), tagged:profiles!posts_tagged_user_id_fkey(username)")
+      .eq("user_id", targetId).order("created_at", { ascending:false }).limit(30);
+    if(error) throw error;
+    await renderFeedListInto(contentEl, data, `<p class="state-msg">${isOwn ? "Tu n'as encore rien publié." : "Aucune publication pour l'instant."}</p>`);
+  }catch(e){ contentEl.innerHTML = `<p class="state-msg">Publications indisponibles pour le moment.</p>`; }
 }
 
 /* ---------------- ÉCRAN BILAN ---------------- */
@@ -863,10 +1331,11 @@ function renderBilan(){
   const periods = [["semaine","Cette semaine"],["mois","Ce mois-ci"],["annee","Cette année"],["an_dernier","L'an dernier"]];
   const tabsHtml = periods.map(([key,label]) => `<button type="button" class="period-tab${bilanPeriod===key?' selected':''}" data-period="${key}">${label}</button>`).join("");
   const shareHtml = bilanPeriod === "semaine" ? `
-    <button type="button" class="share-bilan-btn" id="shareBilanBtn">📣 Partager mon bilan</button>
+    <button type="button" class="share-bilan-btn-small" id="shareBilanBtn">📣 Partager</button>
     <div id="shareBilanForm" hidden style="margin-top:14px; display:flex; flex-direction:column; gap:10px;">
+      <textarea id="shareCaptionInput" class="text-input" placeholder="Un commentaire sur ta semaine (facultatif)" maxlength="200" rows="3" style="margin-bottom:0;"></textarea>
       <input type="text" id="shareTaggedUser" class="search-input" placeholder="👤 Fait avec... (pseudo, facultatif)" maxlength="24" style="margin-bottom:0;">
-      <button type="button" class="primary-btn" id="confirmShareBilanBtn">Publier dans Communauté</button>
+      <button type="button" class="primary-btn" id="confirmShareBilanBtn">Partager</button>
       <p id="shareBilanMsg" class="hint" hidden></p>
     </div>` : "";
   return `
@@ -894,6 +1363,7 @@ function attachBilanHandlers(){
   if(confirmBtn) confirmBtn.onclick = async () => {
     if(!sb || !currentUser) return;
     const taggedUsername = document.getElementById("shareTaggedUser").value.trim();
+    const caption = document.getElementById("shareCaptionInput").value.trim();
     const msgEl = document.getElementById("shareBilanMsg");
     confirmBtn.disabled = true; confirmBtn.textContent = "…";
     try{
@@ -904,17 +1374,29 @@ function attachBilanHandlers(){
         if(taggedProfile) taggedUserId = taggedProfile.id;
       }
       const { data: newPost, error } = await sb.from("posts").insert({
-        user_id: currentUser.id, type: "bilan", period: "semaine", stats, tagged_user_id: taggedUserId
+        user_id: currentUser.id, type: "bilan", period: "semaine", stats, caption: caption || null, tagged_user_id: taggedUserId
       }).select("id").single();
       if(error) throw error;
       if(taggedUserId) await createNotification(taggedUserId, "tag", newPost.id);
       msgEl.hidden = false; msgEl.textContent = "✅ Bilan publié dans Communauté.";
       confirmBtn.textContent = "Publié";
+      await shareBilanNative(stats, caption);
     }catch(e){
       msgEl.hidden = false; msgEl.textContent = "Impossible de publier pour le moment.";
-      confirmBtn.disabled = false; confirmBtn.textContent = "Publier dans Communauté";
+      confirmBtn.disabled = false; confirmBtn.textContent = "Partager";
     }
   };
+}
+async function shareBilanNative(stats, caption){
+  const lines = [];
+  if(stats.sessions) lines.push(`${stats.sessions} séance${stats.sessions>1?'s':''}`);
+  if(stats.dureeMin) lines.push(`${stats.dureeMin} min d'entraînement`);
+  if(stats.joursActifs) lines.push(`${stats.joursActifs} jour${stats.joursActifs>1?'s':''} actif${stats.joursActifs>1?'s':''}`);
+  const text = ["Mon bilan de la semaine sur Vokro", lines.join(' · '), caption].filter(Boolean).join('\n');
+  if(navigator.share){
+    try{ await navigator.share({ title: "Mon bilan Vokro", text }); return; }catch(e){ return; }
+  }
+  try{ await navigator.clipboard.writeText(text); }catch(e){}
 }
 
 /* ---------------- ÉCRAN PARAMÈTRES ---------------- */
@@ -923,9 +1405,29 @@ function renderParametres(){
   const isPrivate = !!(currentProfile && currentProfile.is_private);
   const taggingPerm = (currentProfile && currentProfile.tagging_permission) || "everyone";
   const darkOn = document.documentElement.dataset.theme !== "light";
+  const profileUsername = (currentProfile && currentProfile.username) || "";
+  const profileBio = (currentProfile && currentProfile.bio) || "";
   return `
     <div class="screen-pad">
       <h2>Paramètres</h2>
+      <div class="profile-section-title" style="margin-top:0;">👤 Profil</div>
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:18px;">
+        <div class="profile-avatar-edit">
+          <div class="avatar-circle" id="settingsAvatarPreview"></div>
+          <button type="button" class="avatar-edit-badge" id="changeAvatarBtn" aria-label="Changer la photo de profil">✏️</button>
+        </div>
+        <div>
+          <div class="settings-label" style="margin-bottom:2px;">Photo de profil</div>
+          <div class="settings-desc">Choisis une photo, tu pourras la recadrer et zoomer dessus.</div>
+        </div>
+        <input type="file" id="avatarFileInput" accept="image/*" hidden>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+        <input type="text" id="settingsUsername" class="text-input" placeholder="Pseudo" maxlength="24" value="${escapeHtml(profileUsername)}">
+        <textarea id="settingsBio" class="text-input" placeholder="Bio (facultatif)" maxlength="140" rows="3">${escapeHtml(profileBio)}</textarea>
+        <button type="button" class="primary-btn" id="saveProfileBtn" style="align-self:flex-start; padding:11px 20px; font-size:14px;">Enregistrer</button>
+        <p id="saveProfileMsg" class="auth-info" hidden style="text-align:left;"></p>
+      </div>
       <div class="settings-row">
         <div>
           <div class="settings-label">🔒 Compte privé</div>
@@ -966,6 +1468,35 @@ function applyTheme(theme){
   try{ localStorage.setItem("forge_theme", theme); }catch(e){}
 }
 function attachParametresHandlers(){
+  updateSettingsAvatarPreview();
+  const changeAvatarBtn = document.getElementById("changeAvatarBtn");
+  const avatarFileInput = document.getElementById("avatarFileInput");
+  if(changeAvatarBtn && avatarFileInput){
+    changeAvatarBtn.onclick = () => avatarFileInput.click();
+    avatarFileInput.onchange = () => {
+      const file = avatarFileInput.files && avatarFileInput.files[0];
+      if(file) openAvatarCropModal(file);
+      avatarFileInput.value = "";
+    };
+  }
+
+  const saveProfileBtn = document.getElementById("saveProfileBtn");
+  if(saveProfileBtn) saveProfileBtn.onclick = async () => {
+    const username = document.getElementById("settingsUsername").value.trim();
+    const bio = document.getElementById("settingsBio").value.trim();
+    const msgEl = document.getElementById("saveProfileMsg");
+    if(!username || !sb || !currentUser) return;
+    saveProfileBtn.disabled = true; saveProfileBtn.textContent = "…";
+    if(msgEl) msgEl.hidden = true;
+    try{
+      const { error } = await sb.from("profiles").update({ username, bio }).eq("id", currentUser.id);
+      if(error) throw error;
+      currentProfile = Object.assign({}, currentProfile, { username, bio });
+      updateHeaderAvatar();
+      if(msgEl){ msgEl.textContent = "Profil mis à jour."; msgEl.hidden = false; }
+    }catch(e){ if(msgEl){ msgEl.textContent = "Impossible d'enregistrer : " + (e.message || "erreur inconnue"); msgEl.className = "auth-error"; msgEl.hidden = false; } }
+    finally{ saveProfileBtn.disabled = false; saveProfileBtn.textContent = "Enregistrer"; }
+  };
   const privateToggle = document.getElementById("privateToggle");
   if(privateToggle) privateToggle.onchange = async () => {
     if(!sb || !currentUser) return;
@@ -1030,14 +1561,16 @@ async function checkForAppUpdate(){
 
 /* ---------------- NAVIGATION GLOBALE (header, menu, tabbar) ---------------- */
 const TAB_SCREENS = {
-  entrainements: "history",
+  entrainements: "myworkouts",
   sentrainer: "home",
   communaute: "communaute"
 };
 function screenToTab(screen){
-  if(screen === "history") return "entrainements";
+  if(screen === "auth" && state.pendingTab) return state.pendingTab;
+  if(screen === "welcome" || screen === "auth") return null;
+  if(screen === "myworkouts") return "entrainements";
   if(screen === "communaute") return "communaute";
-  if(["profil","bilan","parametres"].includes(screen)) return null;
+  if(["profil","bilan","parametres","history"].includes(screen)) return null;
   return "sentrainer";
 }
 function renderChrome(){
@@ -1063,6 +1596,10 @@ function setupChromeHandlers(){
   document.getElementById("headerAvatarBtn").addEventListener("click", () => {
     viewProfileId = null; state.screen = "profil"; render(); renderChrome();
   });
+  const headerLoginBtn = document.getElementById("headerLoginBtn");
+  if(headerLoginBtn) headerLoginBtn.addEventListener("click", () => {
+    state.pendingTab = null; setAuthMode("signin"); state.screen = "auth"; render();
+  });
   document.addEventListener("click", (e) => {
     const menuPanel = document.getElementById("menuPanel");
     if(!menuPanel.hidden && !menuPanel.contains(e.target) && e.target.id !== "menuBtn") menuPanel.hidden = true;
@@ -1079,42 +1616,14 @@ function setupChromeHandlers(){
   });
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
+      if(!currentUser){
+        state.pendingTab = btn.dataset.tab; setAuthMode("signin"); state.screen = "auth"; render();
+        return;
+      }
       state.screen = TAB_SCREENS[btn.dataset.tab];
       if(btn.dataset.tab === "communaute") communityMode = "public";
       render(); renderChrome();
     });
-  });
-  document.getElementById("authSwitchBtn").addEventListener("click", () => setAuthMode(authMode === "signup" ? "signin" : "signup"));
-  document.getElementById("authForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const errorEl = document.getElementById("authError");
-    const infoEl = document.getElementById("authInfo");
-    const submitBtn = document.getElementById("authSubmitBtn");
-    if(!sb){ errorEl.textContent = "Connexion au serveur indisponible."; errorEl.hidden = false; return; }
-    const email = document.getElementById("authEmail").value.trim();
-    const password = document.getElementById("authPassword").value;
-    errorEl.hidden = true; infoEl.hidden = true;
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errorEl.textContent = "Adresse email invalide."; errorEl.hidden = false; return; }
-    if(authMode === "signup" && !passwordIsStrongEnough(password)){
-      errorEl.textContent = "Mot de passe trop simple : 8 caractères min., majuscule, minuscule, chiffre, caractère spécial.";
-      errorEl.hidden = false; return;
-    }
-    submitBtn.disabled = true; submitBtn.textContent = "…";
-    try{
-      if(authMode === "signup"){
-        const { data, error } = await sb.auth.signUp({ email, password });
-        if(error) throw error;
-        if(!data.session){
-          infoEl.textContent = "Vérifie tes emails pour confirmer ton compte, puis connecte-toi.";
-          infoEl.hidden = false;
-          setAuthMode("signin");
-        }
-      } else {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
-        if(error) throw error;
-      }
-    }catch(err){ errorEl.textContent = authErrorMessage(err); errorEl.hidden = false; }
-    finally{ submitBtn.disabled = false; submitBtn.textContent = authMode === "signup" ? "Créer mon compte" : "Se connecter"; }
   });
 }
 
@@ -1449,17 +1958,20 @@ const sndRestEnd = () => { beep(523,0.1,0.2); setTimeout(()=>beep(784,0.18,0.22)
 const sndFinish = () => { [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,0.18,0.22), i*140)); };
 
 /* ---------------- STATE ---------------- */
-let state = { screen: 'home', programKey: null, exIdx: 0, setIdx: 0, mode: 'effort',
-  count: 0, timeLeft: 0, timer: null, paused: false,
+let state = { screen: 'welcome', programKey: null, exIdx: 0, setIdx: 0, mode: 'effort',
+  count: 0, timeLeft: 0, timer: null, paused: false, pendingTab: null,
   repPhase: 'down', phaseTimeout: null, phaseEndTime: 0, phaseRemaining: 0, phaseOnDone: null };
 
 function render(){
   const app = document.getElementById('app');
-  if(state.screen === 'home') app.innerHTML = renderHome();
+  if(state.screen === 'welcome') app.innerHTML = renderWelcome();
+  else if(state.screen === 'auth') app.innerHTML = renderAuthScreen();
+  else if(state.screen === 'home') app.innerHTML = renderHome();
   else if(state.screen === 'detail') app.innerHTML = renderProgramDetail();
   else if(state.screen === 'session') app.innerHTML = renderSession();
   else if(state.screen === 'done') app.innerHTML = renderDone();
   else if(state.screen === 'history') app.innerHTML = renderHistory();
+  else if(state.screen === 'myworkouts') app.innerHTML = renderMyWorkoutsScreen();
   else if(state.screen === 'freetest') app.innerHTML = renderFreeTest();
   else if(state.screen === 'freetestconfirm') app.innerHTML = renderFreeTestConfirm();
   else if(state.screen === 'freetestdone') app.innerHTML = renderFreeTestDone();
@@ -1471,7 +1983,8 @@ function render(){
   else if(state.screen === 'parametres') app.innerHTML = renderParametres();
   else if(state.screen === 'workoutBuilder') app.innerHTML = renderWorkoutBuilder();
   attachHandlers();
-  if(state.screen === 'communaute') attachCommunauteHandlers();
+  if(state.screen === 'auth') attachAuthScreenHandlers();
+  else if(state.screen === 'communaute') attachCommunauteHandlers();
   else if(state.screen === 'profil') loadProfilScreen();
   else if(state.screen === 'bilan') attachBilanHandlers();
   else if(state.screen === 'parametres') attachParametresHandlers();
@@ -1559,11 +2072,16 @@ function recordBreakerInSameMonth(program){
 function computeBadges(){
   const badges = [];
   const thresholds = [100,500,1000,2000];
-  Object.keys(PROGRAMS).forEach(key => {
+  const allPrograms = Object.assign({}, PROGRAMS, customPrograms);
+  Object.keys(allPrograms).forEach(key => {
+    const prog = allPrograms[key];
+    const hasReps = prog.exercises.some(ex => ex.pyramid || ex.type === 'reps' || ex.type === 'manual');
+    if(!hasReps) return; // programme composé uniquement d'exercices en tenue (secondes) -> pas de badge en répétitions à proposer
     const total = lifetimeStats(key).total;
+    const label = prog.label.toLowerCase();
     thresholds.forEach(t => {
-      badges.push({ id:`vol_${key}_${t}`, label:`${t} ${PROGRAMS[key].label.toLowerCase()}`,
-        desc:`Atteindre ${t} répétitions au total en ${PROGRAMS[key].label.toLowerCase()}`,
+      badges.push({ id:`vol_${key}_${t}`, label:`${t} ${label}`,
+        desc:`Atteindre ${t} répétitions au total en ${label}`,
         unlocked: total>=t, progress: Math.min(1,total/t), progressText:`${total}/${t}`, surprise:false });
     });
   });
@@ -1776,10 +2294,9 @@ function renderHome(){
     <div class="home">
       <div class="brand">
         <div class="brand-row">
-          <h1>FORGE</h1>
+          <h1>VOKRO</h1>
           <div style="display:flex; gap:8px;">
             <button class="hist-link" id="trophiesBtn">🏆</button>
-            <button class="hist-link" id="histBtn">📋 Historique</button>
           </div>
         </div>
         <div class="brand-ember"></div>
@@ -1798,7 +2315,7 @@ function renderProgramDetail(){
   const maxTestBtn = (key === 'pompes' || key === 'tractions') ? `
       <button class="maxtest-btn" id="maxTestBtn">🎯 Tester mon max${record ? ' (record : '+record+')' : ''}</button>` : '';
   const deleteBtn = isCustom ? `
-      <button class="maxtest-btn" id="deleteCustomBtn" style="border-color:#ff6b6b; color:#ff6b6b; margin-top:8px;">🗑 Supprimer cet entraînement</button>` : '';
+      <button type="button" class="link-btn" id="deleteCustomBtn" style="color:#ff6b6b; opacity:.7; font-size:12px; margin-top:14px;">Supprimer cet entraînement</button>` : '';
   const lifetime = lifetimeStats(key).total;
   return `
     <div class="home">
@@ -2427,7 +2944,7 @@ async function exportToClipboard(){
   const text = generateExportText();
   try{
     await navigator.clipboard.writeText(text);
-    alert('Copié ! Colle cette ligne dans le tableau de la page Notion "Application FORGE — Export".');
+    alert('Copié ! Colle cette ligne dans le tableau de la page Notion "Application VOKRO — Export".');
   }catch(e){
     prompt('Copie ce texte manuellement :', text);
   }
@@ -2435,15 +2952,54 @@ async function exportToClipboard(){
 
 /* ---------------- CRÉATION D'ENTRAÎNEMENT PERSONNALISÉ ---------------- */
 function newExerciseDraft(){
-  return { name: '', sets: 3, rest: 60, mode: 'auto', target: 10, descente: 1.5, montee: 1 };
+  return { name: '', sets: 3, rest: 60, mode: 'auto', target: 10, tempoMode: 'phases', descente: 1.5, montee: 1, interval: 2 };
 }
 let workoutDraft = null;   // { editingKey: null|string, label: '', exercises: [] }
 let exerciseDraft = null;  // formulaire d'exercice en cours d'ajout, null = fermé
 
+// Champs éditables au clic/tape sur la valeur, avec bornes + arrondi
+const EX_FIELD_BOUNDS = { sets:[1,12], rest:[0,300], target:[1,100], descente:[0.3,5], montee:[0.3,5], interval:[0.3,10] };
+const EX_FIELD_DECIMALS = { descente:1, montee:1, interval:1 };
+function clampExerciseField(field){
+  const bounds = EX_FIELD_BOUNDS[field];
+  if(!bounds) return;
+  let val = exerciseDraft[field];
+  if(typeof val !== 'number' || isNaN(val)) val = bounds[0];
+  val = Math.min(bounds[1], Math.max(bounds[0], val));
+  const dec = EX_FIELD_DECIMALS[field];
+  exerciseDraft[field] = dec ? Math.round(val * Math.pow(10, dec)) / Math.pow(10, dec) : Math.round(val);
+}
+
+// Convertit un exercice tel que stocké dans customPrograms vers la forme "brouillon" éditable
+function savedToDraftExercise(ex){
+  if(ex.type === 'manual'){
+    return { name: ex.name, sets: ex.sets, rest: ex.rest, mode: 'manual', target: 10, tempoMode: 'phases', descente: 1.5, montee: 1, interval: 2 };
+  }
+  const isSingle = !!(ex.phase1 && ex.phase2 && ex.phase1.label === 'Répétition');
+  return {
+    name: ex.name, sets: ex.sets, rest: ex.rest, mode: 'auto', target: ex.target,
+    tempoMode: isSingle ? 'single' : 'phases',
+    descente: isSingle ? 1.5 : (ex.phase1 ? ex.phase1.dur : 1.5),
+    montee: isSingle ? 1 : (ex.phase2 ? ex.phase2.dur : 1),
+    interval: isSingle ? Math.round((ex.phase1.dur + ex.phase2.dur) * 10) / 10 : 2
+  };
+}
+// Convertit un exercice "brouillon" vers la forme stockée dans customPrograms
+function draftToSavedExercise(ex){
+  if(ex.mode === 'manual') return { name: ex.name, type: 'manual', sets: ex.sets, rest: ex.rest };
+  if(ex.tempoMode === 'single'){
+    const half = Math.round((ex.interval / 2) * 10) / 10;
+    return { name: ex.name, type: 'reps', target: ex.target, sets: ex.sets, rest: ex.rest,
+      phase1: { label: 'Répétition', dur: half }, phase2: { label: 'Répétition', dur: half } };
+  }
+  return { name: ex.name, type: 'reps', target: ex.target, sets: ex.sets, rest: ex.rest,
+    phase1: { label: 'Descente', dur: ex.descente }, phase2: { label: 'Montée', dur: ex.montee } };
+}
+
 function openWorkoutBuilder(existingKey){
   if(existingKey && customPrograms[existingKey]){
     const src = customPrograms[existingKey];
-    workoutDraft = { editingKey: existingKey, label: src.label, exercises: JSON.parse(JSON.stringify(src.exercises)) };
+    workoutDraft = { editingKey: existingKey, label: src.label, exercises: src.exercises.map(savedToDraftExercise) };
   } else {
     workoutDraft = { editingKey: null, label: '', exercises: [] };
   }
@@ -2454,19 +3010,58 @@ function openWorkoutBuilder(existingKey){
 function closeWorkoutBuilder(){
   workoutDraft = null;
   exerciseDraft = null;
-  state.screen = 'history';
+  state.screen = 'myworkouts';
   render();
 }
 function exerciseSummaryLine(ex){
   const repos = `repos ${ex.rest}s`;
   if(ex.mode === 'manual') return `${ex.sets} séries · à ton rythme, tu notes le nombre à la fin · ${repos}`;
+  if(ex.tempoMode === 'single') return `${ex.sets}×${ex.target} · ${ex.interval}s entre chaque répétition · ${repos}`;
   return `${ex.sets}×${ex.target} · descente ${ex.descente}s → montée ${ex.montee}s · ${repos}`;
+}
+function computeDraftSummary(exercises){
+  let totalReps = 0, totalSec = 0, hasManual = false;
+  exercises.forEach((ex, i) => {
+    const n = ex.sets;
+    if(ex.mode === 'manual'){
+      hasManual = true;
+      totalSec += n * 20; // estimation forfaitaire pour les séries "à ton rythme"
+    } else {
+      const repDur = ex.tempoMode === 'single' ? ex.interval : (ex.descente + ex.montee);
+      totalReps += n * ex.target;
+      totalSec += n * ex.target * repDur;
+    }
+    totalSec += (n - 1) * ex.rest;
+    if(i < exercises.length - 1) totalSec += ex.rest;
+  });
+  return { totalReps, totalSec, hasManual };
+}
+function renderDraftSummary(exercises){
+  const s = computeDraftSummary(exercises);
+  const parts = [];
+  parts.push(`~${formatDuration(s.totalSec)}${s.hasManual ? ' (estimation)' : ''}`);
+  if(s.totalReps) parts.push(`${s.totalReps} répétitions au total`);
+  return `<div class="draft-summary">📊 ${parts.join(' · ')}</div>`;
+}
+function stepperRowHtml(label, field, value, suffix, deltaMinus, deltaPlus, decimals){
+  const displayVal = decimals ? value.toFixed(decimals) : value;
+  return `
+      <div class="stepper-row">
+        <span class="stepper-label">${label}</span>
+        <div class="stepper-ctrl">
+          <button type="button" class="stepper-btn" data-field="${field}" data-delta="${deltaMinus}">−</button>
+          <input type="text" inputmode="decimal" class="stepper-val-input" data-field="${field}" value="${displayVal}">
+          ${suffix ? `<span class="stepper-suffix">${suffix}</span>` : ''}
+          <button type="button" class="stepper-btn" data-field="${field}" data-delta="${deltaPlus}">+</button>
+        </div>
+      </div>`;
 }
 function renderWorkoutBuilder(){
   const wd = workoutDraft;
   const exList = wd.exercises.map((ex, i) => `
-    <div class="exercise-summary-card">
-      <div>
+    <div class="exercise-summary-card" data-ex-index="${i}">
+      <div class="exercise-drag-handle" data-drag-handle="${i}" aria-label="Réordonner">⠿</div>
+      <div style="flex:1; min-width:0;">
         <div class="exercise-summary-name">${escapeHtml(ex.name)}</div>
         <div class="exercise-summary-detail">${exerciseSummaryLine(ex)}</div>
       </div>
@@ -2478,22 +3073,8 @@ function renderWorkoutBuilder(){
       <div class="builder-section-title">Nouvel exercice</div>
       <input type="text" id="exNameInput" class="text-input" placeholder="Nom de l'exercice (ex. Squats)" maxlength="40" value="${escapeHtml(exerciseDraft.name)}" style="margin-bottom:12px;">
 
-      <div class="stepper-row">
-        <span class="stepper-label">Nombre de séries</span>
-        <div class="stepper-ctrl">
-          <button type="button" class="stepper-btn" data-field="sets" data-delta="-1">−</button>
-          <span class="stepper-val">${exerciseDraft.sets}</span>
-          <button type="button" class="stepper-btn" data-field="sets" data-delta="1">+</button>
-        </div>
-      </div>
-      <div class="stepper-row">
-        <span class="stepper-label">Repos entre les séries</span>
-        <div class="stepper-ctrl">
-          <button type="button" class="stepper-btn" data-field="rest" data-delta="-15">−</button>
-          <span class="stepper-val">${exerciseDraft.rest}s</span>
-          <button type="button" class="stepper-btn" data-field="rest" data-delta="15">+</button>
-        </div>
-      </div>
+      ${stepperRowHtml('Nombre de séries', 'sets', exerciseDraft.sets, '', -1, 1)}
+      ${stepperRowHtml('Repos entre les séries', 'rest', exerciseDraft.rest, 's', -15, 15)}
 
       <div style="margin-top:14px;">
         <div class="settings-label" style="margin-bottom:8px;">Les répétitions...</div>
@@ -2504,30 +3085,20 @@ function renderWorkoutBuilder(){
       </div>
 
       ${exerciseDraft.mode === 'auto' ? `
-      <div class="stepper-row" style="margin-top:8px;">
-        <span class="stepper-label">Répétitions par série</span>
-        <div class="stepper-ctrl">
-          <button type="button" class="stepper-btn" data-field="target" data-delta="-1">−</button>
-          <span class="stepper-val">${exerciseDraft.target}</span>
-          <button type="button" class="stepper-btn" data-field="target" data-delta="1">+</button>
+      ${stepperRowHtml('Répétitions par série', 'target', exerciseDraft.target, '', -1, 1)}
+
+      <div style="margin-top:14px;">
+        <div class="settings-label" style="margin-bottom:8px;">Rythme des répétitions</div>
+        <div class="tag-picker" id="exTempoPicker">
+          <button type="button" data-value="phases" class="${exerciseDraft.tempoMode==='phases'?'selected':''}">⬇️⬆️ descente / montée séparées</button>
+          <button type="button" data-value="single" class="${exerciseDraft.tempoMode==='single'?'selected':''}">🔁 temps entre chaque répétition</button>
         </div>
       </div>
-      <div class="stepper-row">
-        <span class="stepper-label">Temps de descente</span>
-        <div class="stepper-ctrl">
-          <button type="button" class="stepper-btn" data-field="descente" data-delta="-0.1">−</button>
-          <span class="stepper-val">${exerciseDraft.descente.toFixed(1)}s</span>
-          <button type="button" class="stepper-btn" data-field="descente" data-delta="0.1">+</button>
-        </div>
-      </div>
-      <div class="stepper-row">
-        <span class="stepper-label">Temps de montée</span>
-        <div class="stepper-ctrl">
-          <button type="button" class="stepper-btn" data-field="montee" data-delta="-0.1">−</button>
-          <span class="stepper-val">${exerciseDraft.montee.toFixed(1)}s</span>
-          <button type="button" class="stepper-btn" data-field="montee" data-delta="0.1">+</button>
-        </div>
-      </div>` : `
+
+      ${exerciseDraft.tempoMode === 'single' ? `
+      ${stepperRowHtml('Temps entre chaque répétition', 'interval', exerciseDraft.interval, 's', -0.1, 0.1, 1)}` : `
+      ${stepperRowHtml('Temps de descente', 'descente', exerciseDraft.descente, 's', -0.1, 0.1, 1)}
+      ${stepperRowHtml('Temps de montée', 'montee', exerciseDraft.montee, 's', -0.1, 0.1, 1)}`}` : `
       <p class="hint" style="margin-top:10px;">Tu feras la série à ton rythme, sans chrono de répétitions, puis tu indiqueras le nombre réalisé juste après.</p>`}
 
       <button type="button" class="primary-btn" id="confirmAddExerciseBtn" style="margin-top:14px;">Ajouter cet exercice</button>
@@ -2541,8 +3112,10 @@ function renderWorkoutBuilder(){
       <h2>${wd.editingKey ? "Modifier l'entraînement" : "Nouvel entraînement"}</h2>
       <input type="text" id="workoutLabelInput" class="text-input" placeholder="Nom de la séance (ex. Full body)" maxlength="40" value="${escapeHtml(wd.label)}" style="margin-bottom:18px;">
       <div class="builder-section-title">Exercices${wd.exercises.length ? ` (${wd.exercises.length})` : ''}</div>
+      ${wd.exercises.length > 1 ? `<p class="hint" style="margin-top:-6px; margin-bottom:10px;">Maintiens ⠿ et fais glisser pour réordonner.</p>` : ''}
       ${exList}
       ${exFormHtml}
+      ${wd.exercises.length ? renderDraftSummary(wd.exercises) : ''}
       <button type="button" class="share-bilan-btn" id="saveWorkoutBtn" style="margin-top:22px;">Enregistrer l'entraînement</button>
     </div>`;
 }
@@ -2566,18 +3139,27 @@ function attachWorkoutBuilderHandlers(){
     btn.onclick = () => {
       const field = btn.dataset.field;
       const delta = parseFloat(btn.dataset.delta);
-      const bounds = {
-        sets: [1, 12], rest: [0, 300], target: [1, 100], descente: [0.3, 5], montee: [0.3, 5]
-      }[field];
-      let val = exerciseDraft[field] + delta;
-      val = Math.min(bounds[1], Math.max(bounds[0], val));
-      exerciseDraft[field] = (field === 'descente' || field === 'montee') ? Math.round(val * 10) / 10 : Math.round(val);
+      exerciseDraft[field] = (exerciseDraft[field] || 0) + delta;
+      clampExerciseField(field);
       render();
     };
   });
 
+  document.querySelectorAll('.stepper-val-input').forEach(inp => {
+    inp.oninput = () => {
+      const num = parseFloat((inp.value || '').replace(',', '.'));
+      if(!isNaN(num)) exerciseDraft[inp.dataset.field] = num;
+    };
+    inp.onblur = () => { clampExerciseField(inp.dataset.field); render(); };
+    inp.onkeydown = (e) => { if(e.key === 'Enter') inp.blur(); };
+  });
+
   document.querySelectorAll('#exModePicker button').forEach(btn => {
     btn.onclick = () => { exerciseDraft.mode = btn.dataset.value; render(); };
+  });
+
+  document.querySelectorAll('#exTempoPicker button').forEach(btn => {
+    btn.onclick = () => { exerciseDraft.tempoMode = btn.dataset.value; render(); };
   });
 
   const confirmAddBtn = document.getElementById('confirmAddExerciseBtn');
@@ -2597,6 +3179,8 @@ function attachWorkoutBuilderHandlers(){
     };
   });
 
+  attachExerciseDragReorder();
+
   const saveBtn = document.getElementById('saveWorkoutBtn');
   if(saveBtn) saveBtn.onclick = async () => {
     const label = (document.getElementById('workoutLabelInput').value || '').trim();
@@ -2606,62 +3190,106 @@ function attachWorkoutBuilderHandlers(){
     customPrograms[key] = {
       label,
       custom: true,
-      exercises: workoutDraft.exercises.map(ex => {
-        if(ex.mode === 'manual') return { name: ex.name, type: 'manual', sets: ex.sets, rest: ex.rest };
-        return {
-          name: ex.name, type: 'reps', target: ex.target, sets: ex.sets, rest: ex.rest,
-          phase1: { label: 'Descente', dur: ex.descente }, phase2: { label: 'Montée', dur: ex.montee }
-        };
-      })
+      exercises: workoutDraft.exercises.map(draftToSavedExercise)
     };
     await saveCustomPrograms();
     workoutDraft = null; exerciseDraft = null;
-    state.screen = 'history';
+    state.screen = 'myworkouts';
     render();
   };
+}
+
+// Réordonnancement des exercices par glisser-déposer (souris ou tactile via Pointer Events)
+function attachExerciseDragReorder(){
+  document.querySelectorAll('.exercise-drag-handle').forEach(handle => {
+    handle.onpointerdown = (e) => {
+      e.preventDefault();
+      const card = handle.closest('.exercise-summary-card');
+      const list = card.parentElement;
+      const cards = Array.from(list.querySelectorAll('.exercise-summary-card'));
+      const startIndex = cards.indexOf(card);
+      const startY = e.clientY;
+      const cardRect = card.getBoundingClientRect();
+      card.classList.add('dragging');
+      let newIndex = startIndex;
+
+      const onMove = (ev) => {
+        const dy = ev.clientY - startY;
+        card.style.transform = `translateY(${dy}px)`;
+        const cardMidY = cardRect.top + cardRect.height / 2 + dy;
+        let idx = startIndex;
+        cards.forEach((c, i) => {
+          if(c === card) return;
+          const r = c.getBoundingClientRect();
+          const mid = r.top + r.height / 2;
+          if(i < startIndex && cardMidY < mid) idx = Math.min(idx, i);
+          if(i > startIndex && cardMidY > mid) idx = Math.max(idx, i);
+        });
+        newIndex = idx;
+      };
+      const onUp = () => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        card.classList.remove('dragging');
+        card.style.transform = '';
+        if(newIndex !== startIndex){
+          const [moved] = workoutDraft.exercises.splice(startIndex, 1);
+          workoutDraft.exercises.splice(newIndex, 0, moved);
+        }
+        render();
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    };
+  });
 }
 async function deleteCustomWorkout(key){
   if(!confirm('Supprimer définitivement cet entraînement ?')) return;
   delete customPrograms[key];
   await saveCustomPrograms();
-  state.screen = 'history';
+  state.screen = 'myworkouts';
   render();
 }
 
 
-function renderMyWorkoutsSection(){
+function customWorkoutAvgDuration(key){
+  const entries = sessionHistory.filter(e => e.program === key && e.validated && e.durationMin);
+  if(!entries.length) return null;
+  return Math.round(entries.reduce((a,e) => a + e.durationMin, 0) / entries.length);
+}
+function renderMyWorkoutsScreen(){
   const keys = Object.keys(customPrograms);
   const cards = keys.map(key => {
     const p = customPrograms[key];
+    const avg = customWorkoutAvgDuration(key);
+    const subParts = [`${p.exercises.length} exercice${p.exercises.length>1?'s':''}`];
+    if(avg) subParts.push(`~${avg} min en moyenne`);
     return `
       <div class="custom-workout-card">
         <div style="flex:1; min-width:0; cursor:pointer;" data-open-custom="${key}">
           <div class="custom-workout-name">${escapeHtml(p.label)}</div>
-          <div class="custom-workout-sub">${p.exercises.length} exercice${p.exercises.length>1?'s':''}</div>
+          <div class="custom-workout-sub">${subParts.join(' · ')}</div>
         </div>
         <button type="button" class="hist-link" data-edit-custom="${key}">✏️</button>
       </div>`;
   }).join('');
+  const empty = !keys.length ? `<p class="state-msg">Aucun entraînement créé pour l'instant.</p>` : '';
   return `
-    <div style="margin-bottom:20px;">
-      <div class="hist-row1" style="margin-bottom:10px;">
-        <span class="hist-prog">Mes séances</span>
-      </div>
+    <div class="screen-pad">
+      <h2>Mes entraînements</h2>
+      ${empty}
       ${cards}
       <button type="button" class="add-exercise-btn" id="openWorkoutBuilderBtn">+ Ajouter un entraînement</button>
     </div>`;
 }
 function renderHistory(){
-  const myWorkouts = renderMyWorkoutsSection();
   if(sessionHistory.length === 0){
     return `
       <div class="history">
         <div class="hist-topbar">
           <button class="hist-back" id="histBackBtn">← RETOUR</button>
           <h1>Historique</h1>
-          <button class="hist-link" id="exportBtn">📤 Exporter</button>
         </div>
-        ${myWorkouts}
         <div class="hist-empty">Aucune séance enregistrée pour l'instant.</div>
       </div>`;
   }
@@ -2688,9 +3316,7 @@ function renderHistory(){
       <div class="hist-topbar">
         <button class="hist-back" id="histBackBtn">← RETOUR</button>
         <h1>Historique</h1>
-        <button class="hist-link" id="exportBtn">📤 Exporter</button>
       </div>
-      ${myWorkouts}
       ${chart}
       ${entries}
     </div>`;
@@ -2698,6 +3324,9 @@ function renderHistory(){
 
 /* ---------------- HANDLERS ---------------- */
 function attachHandlers(){
+  const welcomeCtaBtn = document.getElementById('welcomeCtaBtn');
+  if(welcomeCtaBtn) welcomeCtaBtn.onclick = () => { state.pendingTab = null; setAuthMode("signin"); state.screen = 'auth'; render(); };
+
   document.querySelectorAll('.prog-card-simple').forEach(card => {
     card.onclick = () => { state.programKey = card.dataset.key; state.screen = 'detail'; render(); };
   });
@@ -2765,17 +3394,11 @@ function attachHandlers(){
   const homeBtn = document.getElementById('homeBtn');
   if(homeBtn) homeBtn.onclick = () => { state = { screen:'home', programKey:null, exIdx:0, setIdx:0, mode:'effort', count:0, timeLeft:0, timer:null, paused:false, sessionFailed:false, levelChanged:null, freeTestActive:false }; render(); };
 
-  const histBtn = document.getElementById('histBtn');
-  if(histBtn) histBtn.onclick = () => { state.screen = 'history'; render(); };
-
   const trophiesBtn = document.getElementById('trophiesBtn');
   if(trophiesBtn) trophiesBtn.onclick = () => { state.screen = 'trophies'; render(); };
 
   const histBackBtn = document.getElementById('histBackBtn');
   if(histBackBtn) histBackBtn.onclick = () => { state.screen = 'home'; render(); };
-
-  const exportBtn = document.getElementById('exportBtn');
-  if(exportBtn) exportBtn.onclick = exportToClipboard;
 }
 
 syncPompesExercise();
@@ -2786,8 +3409,18 @@ loadSeenBadges();
 applyTheme(loadSettingsTheme());
 setAuthMode("signin");
 setupChromeHandlers();
+function hideSplashScreen(){
+  const splash = document.getElementById('splashScreen');
+  if(!splash) return;
+  splash.classList.add('hide');
+  setTimeout(() => splash.remove(), 500);
+}
+const splashMinDelay = new Promise(resolve => setTimeout(resolve, 500));
 loadCustomPrograms().then(() => {
-  initAuth().then(() => { if(currentUser) checkForResume(); });
+  initAuth().then(() => {
+    if(currentUser) checkForResume();
+    Promise.all([splashMinDelay]).then(hideSplashScreen);
+  });
 });
 setTimeout(checkForAppUpdate, 1500);
 </script>
